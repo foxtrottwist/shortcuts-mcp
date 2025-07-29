@@ -16,7 +16,7 @@ server.addTool({
   },
   description: "Execute a macOS Shortcut by name with optional input",
   execute: async (args) => {
-    return String(runShortcut(args.name, args.input));
+    return String(await runShortcut(args.name, args.input));
   },
   name: "run_shortcut",
   parameters: z.object({
@@ -36,7 +36,7 @@ server.addTool({
   },
   description: "Open a macOS Shortcut in the Shortcuts editor",
   execute: async (args) => {
-    return String(viewShortcut(args.name));
+    return String(await viewShortcut(args.name));
   },
   name: "view_shortcut",
   parameters: z.object({

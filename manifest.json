@@ -14,10 +14,10 @@
   "documentation": "https://github.com/foxtrottwist/shortcuts-mcp?tab=readme-ov-file#shortcuts-mcp",
   "server": {
     "type": "node",
-    "entry_point": "dist/index.js",
+    "entry_point": "dist/server.js",
     "mcp_config": {
       "command": "node",
-      "args": ["${__dirname}/dist/index.js"],
+      "args": ["${__dirname}/dist/server.js"],
       "env": {}
     }
   },
@@ -60,5 +60,12 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/foxtrottwist/shortcuts-mcp"
+  },
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": ["darwin"],
+    "runtimes": {
+      "node": ">=16.0.0"
+    }
   }
 }
