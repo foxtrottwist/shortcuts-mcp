@@ -1,4 +1,4 @@
-import { exec } from "child_process";
+import { exec, ExecException } from "child_process";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -8,7 +8,6 @@ import {
   viewShortcut,
 } from "../src/shortcuts.js";
 
-// Mock child_process
 vi.mock("child_process", () => ({
   exec: vi.fn(),
 }));
@@ -47,6 +46,7 @@ describe("shortcuts", () => {
       const mockStdout = "Shortcut 1\nShortcut 2\nShortcut 3";
       mockExec.mockImplementation((command, callback) => {
         expect(command).toBe("shortcuts list");
+        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
         callback?.(null, { stderr: "", stdout: mockStdout });
         return undefined as never;
       });
@@ -60,7 +60,8 @@ describe("shortcuts", () => {
       const mockStderr = "Warning: deprecated feature";
       const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-      mockExec.mockImplementation((command, callback) => {
+      mockExec.mockImplementation((_command, callback) => {
+        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
         callback?.(null, { stderr: mockStderr, stdout: mockStdout });
         return undefined as never;
       });
@@ -77,7 +78,8 @@ describe("shortcuts", () => {
     it("should throw error on command failure", async () => {
       const mockError = new Error("Command failed");
       mockExec.mockImplementation((_command, callback) => {
-        callback?.(mockError, null);
+        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
+        callback?.(mockError as ExecException, null); // Cast mockError to ExecException
         return undefined as never;
       });
 
@@ -92,6 +94,7 @@ describe("shortcuts", () => {
       const mockStdout = "Shortcut details...";
       mockExec.mockImplementation((command, callback) => {
         expect(command).toBe("shortcuts view 'My Shortcut'");
+        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
         callback?.(null, { stderr: "", stdout: mockStdout });
         return undefined as never;
       });
@@ -104,6 +107,7 @@ describe("shortcuts", () => {
       const mockStdout = "Shortcut details...";
       mockExec.mockImplementation((command, callback) => {
         expect(command).toBe("shortcuts view 'Don'\"'\"'t Delete'");
+        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
         callback?.(null, { stderr: "", stdout: mockStdout });
         return undefined as never;
       });
@@ -118,6 +122,7 @@ describe("shortcuts", () => {
       const mockStdout = "Shortcut executed";
       mockExec.mockImplementation((command, callback) => {
         expect(command).toBe("shortcuts run 'Test Shortcut'");
+        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
         callback?.(null, { stderr: "", stdout: mockStdout });
         return undefined as never;
       });
@@ -130,6 +135,7 @@ describe("shortcuts", () => {
       const mockStdout = "Shortcut executed with input";
       mockExec.mockImplementation((command, callback) => {
         expect(command).toBe("shortcuts run 'Test Shortcut' <<< 'hello world'");
+        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
         callback?.(null, { stderr: "", stdout: mockStdout });
         return undefined as never;
       });
@@ -142,6 +148,7 @@ describe("shortcuts", () => {
       const mockStdout = "Shortcut executed";
       mockExec.mockImplementation((command, callback) => {
         expect(command).toBe("shortcuts run 'Test Shortcut'");
+        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
         callback?.(null, { stderr: "", stdout: mockStdout });
         return undefined as never;
       });
@@ -156,6 +163,7 @@ describe("shortcuts", () => {
         expect(command).toBe(
           "shortcuts run 'Test Shortcut' <<< 'don'\"'\"'t stop'",
         );
+        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
         callback?.(null, { stderr: "", stdout: mockStdout });
         return undefined as never;
       });
@@ -170,6 +178,7 @@ describe("shortcuts", () => {
         expect(command).toBe(
           "shortcuts run 'My \"Special\" Shortcut' <<< 'input with $pecial ch@rs'",
         );
+        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
         callback?.(null, { stderr: "", stdout: mockStdout });
         return undefined as never;
       });
@@ -185,6 +194,7 @@ describe("shortcuts", () => {
   describe("error handling", () => {
     it("should handle non-Error objects thrown", async () => {
       mockExec.mockImplementation((_command, callback) => {
+        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
         callback?.("String error", null);
         return undefined as never;
       });
@@ -197,7 +207,8 @@ describe("shortcuts", () => {
     it("should preserve original error messages", async () => {
       const originalError = new Error("Permission denied");
       mockExec.mockImplementation((_command, callback) => {
-        callback?.(originalError, null);
+        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
+        callback?.(originalError as ExecException, null); // Cast originalError to ExecException
         return undefined as never;
       });
 
