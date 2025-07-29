@@ -1,27 +1,26 @@
-name: Build and Test
+name: Build and Release
 on:
   push:
     branches:
       - main
 jobs:
-  test:
-    name: Test and Build
-    strategy:
-      fail-fast: true
-      matrix:
-        node:
-          - 22
+  test-and-release:
+    name: Test, Build, and Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js ${{ matrix.node }}
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 22
           cache: "npm"
 
       - name: Install dependencies
@@ -33,10 +32,22 @@ jobs:
       - name: Run tests
         run: npm run test
 
-      - name: Build
+      - name: Build project
         run: npm run build
 
-      - name: Verify build artifacts
+      - name: Sync manifest version
         run: |
-          echo "Build completed successfully"
-          ls -la dist/
+          VERSION=$(node -p "require('./package.json').version")
+          node -e "
+            const manifest = require('./manifest.json');
+            manifest.version = process.env.VERSION;
+            require('fs').writeFileSync('manifest.json', JSON.stringify(manifest, null, 2));
+          " VERSION="$VERSION"
+
+      - name: Build DXT package
+        run: npm run build:dxt
+
+      - name: Semantic Release
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
