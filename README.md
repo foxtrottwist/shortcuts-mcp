@@ -12,9 +12,17 @@ A TypeScript MCP server that enables Claude to execute macOS Shortcuts through t
 
 ## Installation
 
-### Manual Installation
+### Option 1: Desktop Extension (.dxt) - Recommended
 
-Clone and build locally:
+1. Download the latest `.dxt` file from [Releases](https://github.com/foxtrottwist/shortcuts-mcp/releases)
+2. Open Claude Desktop
+3. Go to Settings → Extensions
+4. Click "Install Extension" and select the downloaded `.dxt` file
+5. Restart Claude Desktop
+
+### Option 2: Manual Installation
+
+Clone and build locally for development:
 
 ```bash
 git clone https://github.com/foxtrottwist/shortcuts-mcp.git
@@ -151,6 +159,9 @@ npm run test
 
 # Build for production
 npm run build
+
+# Build .dxt extension
+npm run build:dxt
 ```
 
 ### Project Structure
@@ -234,7 +245,7 @@ shortcuts run "My Shortcut"
 
 ## Roadmap
 
-- [ ] .dxt build process and automated GitHub releases
+- [x] .dxt build process and automated GitHub releases
 - [ ] Enhanced workflow chaining capabilities
 - [ ] Enhanced debugging and logging (command tracing, timing, verbose output)
 - [ ] Performance monitoring and analytics
