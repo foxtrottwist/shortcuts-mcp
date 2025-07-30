@@ -1,0 +1,30 @@
+# Development dependencies
+node_modules/typescript
+node_modules/@types/*
+node_modules/vitest
+node_modules/eslint*
+node_modules/prettier
+node_modules/@eslint/*
+node_modules/tsx
+node_modules/jiti
+node_modules/semantic-release
+node_modules/@semantic-release/*
+
+# Build tools and configs
+src/
+*.test.ts
+*.test.js
+coverage/
+.github/
+tsconfig.json
+eslint.config.ts
+vitest.config.ts
+*.md
+
+# Common dev deps that might be included
+node_modules/.bin/
+node_modules/.cache/
+node_modules/@tsconfig/
+node_modules/typescript-eslint
+node_modules/eslint-plugin-*
+node_modules/eslint-config-*

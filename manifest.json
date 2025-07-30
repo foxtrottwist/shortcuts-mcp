@@ -1,0 +1,71 @@
+{
+  "dxt_version": "0.1",
+  "name": "shortcuts-mcp",
+  "display_name": "Shortcuts",
+  "version": "1.0.0",
+  "description": "TypeScript MCP server for macOS Shortcuts automation.",
+  "long_description": "Enables Claude to **execute and manage macOS Shortcuts** through the native `shortcuts` CLI, providing:\n\n- **Seamless automation** without AppleScript complexity\n- **AI-enhanced workflow recommendations**\n- **Native integration** with any app that supports Shortcuts\n\nTransform Claude into your Mac power user through the native automation layer.",
+  "author": {
+    "name": "Law Horne",
+    "email": "hello@foxtrottwist.com",
+    "url": "https://www.lawrencehorne.com/"
+  },
+  "homepage": "https://www.lawrencehorne.com/mcp",
+  "documentation": "https://github.com/foxtrottwist/shortcuts-mcp?tab=readme-ov-file#shortcuts-mcp",
+  "server": {
+    "type": "node",
+    "entry_point": "dist/server.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/server.js"],
+      "env": {}
+    }
+  },
+  "tools": [
+    {
+      "name": "run_shortcut",
+      "description": "Execute a macOS Shortcut by name with optional input"
+    },
+    {
+      "name": "view_shortcut",
+      "description": "Open a macOS Shortcut in the Shortcuts editor"
+    }
+  ],
+  "prompts": [
+    {
+      "name": "Recommend a Shortcut",
+      "description": "Recommend the best shortcut for a specific task based on available shortcuts",
+      "arguments": ["task_description", "context"],
+      "text": "The user wants to: [task description]\nContext: [additional context if provided]\n\nFirst, check the Available Shortcuts resource to see what shortcuts exist.\n\nThen analyze which shortcut(s) would best accomplish this task:\n1. Look for exact matches first\n2. Consider shortcuts that could be adapted\n3. If no perfect match exists, suggest the closest alternatives\n4. Explain why you're recommending specific shortcuts\n5. Provide usage guidance for the recommended shortcut(s)\n\nBe specific about which shortcut to use and how to use it effectively."
+    }
+  ],
+  "keywords": [
+    "mcp",
+    "shortcuts",
+    "macos",
+    "automation",
+    "typescript",
+    "claude",
+    "desktop",
+    "workflow",
+    "productivity",
+    "native",
+    "cli",
+    "integration",
+    "ai-assistant",
+    "apple",
+    "scripting"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/foxtrottwist/shortcuts-mcp"
+  },
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": ["darwin"],
+    "runtimes": {
+      "node": ">=16.0.0"
+    }
+  }
+}

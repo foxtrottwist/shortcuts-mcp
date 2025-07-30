@@ -4,6 +4,8 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
+    "build:dxt": "npm run build && npm run pack:dxt",
+    "pack:dxt": "mkdir temp-dxt-build && cd temp-dxt-build && cp ../package*.json ../manifest.json . && cp -r ../dist . && NODE_ENV=production npm ci --omit=dev && npx dxt pack . ../shortcuts-mcp-${npm_package_version}.dxt && cd .. && rm -rf temp-dxt-build",
     "start": "tsx src/server.ts",
     "dev": "fastmcp dev src/server.ts",
     "lint": "prettier --check . && eslint . && tsc --noEmit",
@@ -39,12 +41,29 @@
     "plugins": [
       "@semantic-release/commit-analyzer",
       "@semantic-release/release-notes-generator",
-      "@semantic-release/npm",
-      "@semantic-release/github"
+      [
+        "@semantic-release/changelog",
+        {
+          "changelogFile": "CHANGELOG.md"
+        }
+      ],
+      [
+        "@semantic-release/github",
+        {
+          "assets": [
+            {
+              "path": "shortcuts-mcp-*.dxt",
+              "label": "Desktop Extension (.dxt)"
+            }
+          ]
+        }
+      ]
     ]
   },
   "devDependencies": {
+    "@anthropic-ai/dxt": "^0.2.6",
     "@eslint/js": "^9.26.0",
+    "@semantic-release/changelog": "^6.0.3",
     "@tsconfig/node22": "^22.0.1",
     "@types/node": "^24.1.0",
     "eslint-config-prettier": "^10.1.3",
