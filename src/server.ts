@@ -28,7 +28,7 @@ server.addTool({
       return String(result);
     } catch (error) {
       if (error instanceof Error && error.message === "TIMEOUT") {
-        // Launch in background for interactive shortcuts
+        // Launch in background To prevent interactive shortcuts or shortcuts that return no output from blocking Claude
         spawn("shortcuts", ["run", args.name], {
           detached: true,
           stdio: args.input ? "pipe" : "ignore",
