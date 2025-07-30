@@ -1,3 +1,4 @@
+import { spawn } from "child_process";
 import { FastMCP } from "fastmcp";
 import { z } from "zod";
 
@@ -9,14 +10,35 @@ const server = new FastMCP({
 });
 
 server.addTool({
-  annotations: {
-    openWorldHint: true,
-    readOnlyHint: false,
-    title: "Run Shortcut",
-  },
   description: "Execute a macOS Shortcut by name with optional input",
   execute: async (args) => {
-    return String(await runShortcut(args.name, args.input));
+    const timeout = (args.timeoutSeconds || 5) * 1000;
+
+    try {
+      const result = await Promise.race([
+        runShortcut(args.name, args.input),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("TIMEOUT")), timeout),
+        ),
+      ]);
+
+      if (result.trim() === "") {
+        return `Shortcut "${args.name}" completed successfully (no text output - check clipboard or other apps for results).`;
+      }
+      return String(result);
+    } catch (error) {
+      if (error instanceof Error && error.message === "TIMEOUT") {
+        // Launch in background for interactive shortcuts
+        spawn("shortcuts", ["run", args.name], {
+          detached: true,
+          stdio: args.input ? "pipe" : "ignore",
+        });
+
+        return `Shortcut "${args.name}" is likely interactive or provides no output - launched in background. Check your Mac for prompts or results.`;
+      }
+
+      throw error;
+    }
   },
   name: "run_shortcut",
   parameters: z.object({
@@ -25,6 +47,12 @@ server.addTool({
       .optional()
       .describe("Optional input to pass to the shortcut"),
     name: z.string().describe("The name of the Shortcut to run"),
+    timeoutSeconds: z
+      .number()
+      .optional()
+      .describe(
+        "Timeout in seconds before launching in background (default: 5). Only specify if user requests a specific timeout or for known long-running shortcuts.",
+      ),
   }),
 });
 
@@ -85,7 +113,7 @@ Then analyze which shortcut(s) would best accomplish this task:
 
 Be specific about which shortcut to use and how to use it effectively.`;
   },
-  name: "recommend-shortcut",
+  name: "Recommend a Shortcut",
 });
 
 server.start({
