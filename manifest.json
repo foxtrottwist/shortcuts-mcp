@@ -33,7 +33,7 @@
   ],
   "prompts": [
     {
-      "name": "recommend-shortcut",
+      "name": "Recommend a Shortcut",
       "description": "Recommend the best shortcut for a specific task based on available shortcuts",
       "arguments": ["task_description", "context"],
       "text": "The user wants to: [task description]\nContext: [additional context if provided]\n\nFirst, check the Available Shortcuts resource to see what shortcuts exist.\n\nThen analyze which shortcut(s) would best accomplish this task:\n1. Look for exact matches first\n2. Consider shortcuts that could be adapted\n3. If no perfect match exists, suggest the closest alternatives\n4. Explain why you're recommending specific shortcuts\n5. Provide usage guidance for the recommended shortcut(s)\n\nBe specific about which shortcut to use and how to use it effectively."
