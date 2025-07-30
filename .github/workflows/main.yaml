@@ -38,11 +38,12 @@ jobs:
       - name: Sync manifest version
         run: |
           VERSION=$(node -p "require('./package.json').version")
+          export VERSION
           node -e "
             const manifest = require('./manifest.json');
             manifest.version = process.env.VERSION;
             require('fs').writeFileSync('manifest.json', JSON.stringify(manifest, null, 2));
-          " VERSION="$VERSION"
+          "
 
       - name: Build DXT package
         run: npm run build:dxt
