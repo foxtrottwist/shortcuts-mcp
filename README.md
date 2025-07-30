@@ -19,10 +19,9 @@ If you're like me, you've probably built a collection of shortcuts that handle e
 ### Option 1: Desktop Extension (.dxt) - Recommended
 
 1. Download the latest `.dxt` file from [Releases](https://github.com/foxtrottwist/shortcuts-mcp/releases)
-2. Open Claude Desktop
-3. Go to Settings → Extensions
-4. Click "Install Extension" and select the downloaded `.dxt` file
-5. Restart Claude Desktop
+2. Double-click the .dxt file or drag it onto Claude Desktop
+3. Click "Install" in the Claude Desktop UI
+4. Restart Claude Desktop
 
 ### Option 2: Manual Installation
 
@@ -289,9 +288,9 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 **Law Horne**
 
-- Website: [lawrencehon.com](https://lawrencehon.com)
+- Website: [lawrencehorne.com](https://lawrencehon.com)
 - Email: hello@foxtrottwist.com
-- MCP Projects: [lawrencehon.com/mcp](https://lawrencehon.com/mcp)
+- MCP Projects: [lawrencehorne.com/mcp](https://lawrencehon.com/mcp)
 
 ---
 
