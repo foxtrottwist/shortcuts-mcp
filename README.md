@@ -42,7 +42,7 @@ Add to Claude Desktop configuration:
   "mcpServers": {
     "shortcuts-mcp": {
       "command": "node",
-      "args": ["/absolute/path/to/shortcuts-mcp/dist/index.js"]
+      "args": ["/absolute/path/to/shortcuts-mcp/dist/server.js"]
     }
   }
 }
