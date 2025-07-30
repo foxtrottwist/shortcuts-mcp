@@ -288,9 +288,9 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 **Law Horne**
 
-- Website: [lawrencehorne.com](https://lawrencehon.com)
+- Website: [lawrencehorne.com](https://lawrencehorne.com)
 - Email: hello@foxtrottwist.com
-- MCP Projects: [lawrencehorne.com/mcp](https://lawrencehon.com/mcp)
+- MCP Projects: [lawrencehorne.com/mcp](https://lawrencehorne.com/mcp)
 
 ---
 
