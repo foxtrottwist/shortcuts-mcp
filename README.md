@@ -10,7 +10,7 @@ If you're like me, you've probably built a collection of shortcuts that handle e
 
 - **Direct CLI Integration**: Uses the native `shortcuts` command that ships with macOS—no additional layers or complexity
 - **App Integration**: Works with any app that supports Shortcuts, from Calendar and Messages to specialized workflow tools
-- **Smart Timeout Handling**: Interactive shortcuts automatically launch in background mode so Claude's interface never hangs
+- **Smart Timeout Handling**: Long-running shortcuts timeout gracefully so Claude's interface never hangs
 - **Complete Integration**: Browse available shortcuts, execute with input, and open shortcuts in the editor for modification
 - **Cross-Device Capabilities**: Since shortcuts sync across Apple devices, Claude can trigger automations that affect your entire ecosystem
 
@@ -49,13 +49,13 @@ Add to Claude Desktop configuration:
 
 ## How to Use It
 
-### Basic Automation
+### Automated Shortcuts
 
 ```
-Claude, run my "Add Today's Date To Clipboard" shortcut
+Claude, run my "Get Weather Text" shortcut
 ```
 
-The shortcut presents a menu to choose from multiple date formats (ISO, readable, custom), then adds your selection to the clipboard.
+Shortcuts that run automatically and return text output work perfectly through Claude.
 
 ### Finding the Right Shortcut
 
@@ -79,17 +79,35 @@ Run my "Save Research Notes" shortcut
 
 This might save notes to iCloud, add reminders to your iPhone, or trigger notifications on your Apple Watch—all from a single Claude request.
 
-## Timeout Behavior
+## Interactive Shortcuts Limitation
 
-### Interactive Shortcuts
+**Important**: Shortcuts requiring user interaction (file pickers, menus, prompts) **cannot display UI elements** when run through MCP servers due to security restrictions. This is a limitation of the MCP server execution context, not this specific implementation.
 
-Shortcuts requiring user interaction (file pickers, menus, prompts) automatically launch in background mode after a 5-second timeout to prevent Claude's interface from hanging:
+### What Works
+
+- ✅ Automated shortcuts that run without user input
+- ✅ Shortcuts that return text output
+- ✅ Background processing shortcuts
+- ✅ Clipboard operations and system automation
+
+### What Doesn't Work
+
+- ❌ File picker dialogs
+- ❌ Interactive menus and prompts
+- ❌ UI-based user input
+- ❌ Shortcuts requiring visual confirmation
+
+### Interactive Shortcut Behavior
+
+When Claude attempts to run an interactive shortcut:
 
 ```
 Claude, run my "Choose Files" shortcut
 ```
 
-**Result**: After 5 seconds, the shortcut opens in the Shortcuts app for you to interact with directly.
+**Result**: `Shortcut "Choose Files" timed out after 5 seconds. Interactive shortcuts requiring user input cannot display UI when run through MCP servers. Please run interactive shortcuts manually in the Shortcuts app.`
+
+## Timeout Behavior
 
 ### Customizable Timeout
 
@@ -101,17 +119,22 @@ Claude, run my "Video Converter" shortcut with 30 seconds timeout
 
 ### Silent Shortcuts
 
-Shortcuts that complete successfully but provide no text output (clipboard operations, system settings) also trigger the timeout behavior and launch in background mode.
+Shortcuts that complete successfully but provide no text output will show a confirmation message:
+
+```
+Shortcut "My Shortcut" completed successfully (no text output - check clipboard or other apps for results).
+```
 
 ## Building Shortcuts for Claude
 
 ### Claude-Optimized Shortcuts
 
-For the smoothest Claude integration, consider building specialized shortcuts that:
+For the best Claude integration, build shortcuts that:
 
-- **Return clear text output** instead of just showing UI notifications
-- **Minimize interactive prompts** for automated workflows
+- **Return clear text output** instead of relying on UI notifications
+- **Work without user interaction** for full automation
 - **Provide structured data** that Claude can easily parse and use
+- **Handle errors gracefully** with informative text responses
 
 ### Examples of Claude-Optimized Shortcuts
 
@@ -124,7 +147,10 @@ For the smoothest Claude integration, consider building specialized shortcuts th
 **Instead of**: "File Organizer" (interactive file picker)  
 **Build**: "Organize Desktop Files" (processes specific folder, returns summary)
 
-This approach maximizes automation potential while maintaining the flexibility to use any existing shortcut through the background launch system.
+**Instead of**: "Choose Image" (file picker dialog)  
+**Build**: "Process Latest Screenshot" (works with most recent screenshot automatically)
+
+This approach maximizes automation potential while avoiding the interactive shortcut limitations.
 
 ## How It Works
 
@@ -163,9 +189,9 @@ All user input is properly escaped using single-quote shell escaping. No AppleSc
 
 ### Productivity
 
-- **"Add Today's Date To Clipboard"**: Quick date insertion with format menu (ISO, readable, custom formats)
+- **"Get Current Date"**: Return today's date in various formats (automated version)
 - **"New Quick Note"**: Capture thoughts with automatic tagging and cross-device sync
-- **"Add Meeting Assignment To Calendar"**: Parse meeting details and create calendar events
+- **"Create Calendar Event"**: Parse text and create calendar events with confirmation
 
 ### Development Workflows
 
@@ -249,6 +275,10 @@ Grant necessary permissions to Terminal/Claude Desktop in System Preferences →
 
 Check shortcut name matches exactly (case-sensitive). Use the `Available Shortcuts` resource to see all available shortcuts.
 
+**"Shortcut timed out"**
+
+This means the shortcut either requires user interaction or completed without returning text output. Interactive shortcuts cannot display UI when run through MCP servers and should be run manually in the Shortcuts app. For shortcuts that completed silently, check the Shortcuts app, clipboard, or other applications for results.
+
 ### Debugging
 
 Check shortcut execution directly:
@@ -261,7 +291,7 @@ shortcuts run "My Shortcut"
 ## Compatibility
 
 - **macOS**: 12+ (Monterey and later)
-- **Shortcuts**: Works with all shortcut types and cross-device sync
+- **Shortcuts**: Works with automated shortcuts; interactive shortcuts have UI limitations
 - **Claude Desktop**: Compatible with MCP protocol
 - **Node.js**: 22+ recommended
 

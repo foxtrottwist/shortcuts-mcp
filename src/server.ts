@@ -1,4 +1,3 @@
-import { spawn } from "child_process";
 import { FastMCP } from "fastmcp";
 import { z } from "zod";
 
@@ -28,15 +27,8 @@ server.addTool({
       return String(result);
     } catch (error) {
       if (error instanceof Error && error.message === "TIMEOUT") {
-        // Launch in background To prevent interactive shortcuts or shortcuts that return no output from blocking Claude
-        spawn("shortcuts", ["run", args.name], {
-          detached: true,
-          stdio: args.input ? "pipe" : "ignore",
-        });
-
-        return `Shortcut "${args.name}" is likely interactive or provides no output - launched in background. Check your Mac for prompts or results.`;
+        return `Shortcut "${args.name}" is likely interactive or provides no output. Check your Mac for results.`;
       }
-
       throw error;
     }
   },
