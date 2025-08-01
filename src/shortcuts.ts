@@ -1,83 +1,113 @@
 import { exec } from "child_process";
+import { SerializableValue } from "fastmcp";
 import { promisify } from "util";
 
-export function listShortcuts() {
-  return execShortcuts("list");
-}
+import {
+  escapeAppleScriptString,
+  isExecError,
+  shellEscape,
+} from "./helpers.js";
 
-export function runShortcut(name: string, input?: string) {
-  return execShortcuts(
-    "run",
-    shellEscape(name),
-    input ? `<<< ${shellEscape(input)}` : "",
-  );
-}
-
-export function viewShortcut(name: string) {
-  return execShortcuts("view", shellEscape(name));
-}
+type Logger = {
+  debug: (message: string, data?: SerializableValue) => void;
+  error: (message: string, data?: SerializableValue) => void;
+  info: (message: string, data?: SerializableValue) => void;
+  warn: (message: string, data?: SerializableValue) => void;
+};
 
 const execAsync = promisify(exec);
 
-/**
- * Executes macOS shortcuts CLI commands with proper error handling and argument filtering.
- *
- * Constructs and executes shell commands using the native `shortcuts` CLI tool.
- * Filters out falsy arguments and handles stderr warnings gracefully.
- *
- * @async
- * @param {string} subcommand - The shortcuts CLI subcommand ('run', 'list', 'view', 'sign')
- * @param {string[]} args - Variable arguments passed to the shortcuts command (automatically escaped)
- * @returns The stdout output from the shortcuts command
- * @throws {Error} When the shortcuts command fails or returns a non-zero exit code
- *
- * @example
- * ```typescript
- * // List all shortcuts
- * const shortcuts = await execShortcuts('list');
- *
- * // Run a shortcut with input
- * const result = await execShortcuts('run', shellEscape('My Shortcut'), '<<< "input text"');
- *
- * // View shortcut in editor
- * await execShortcuts('view', shellEscape('My Shortcut'));
- * ```
- */
-export async function execShortcuts(subcommand: string, ...args: string[]) {
+export async function listShortcuts(log: Logger) {
   try {
-    const { stderr, stdout } = await execAsync(
-      `shortcuts ${subcommand}${args.length ? " " + args.filter(Boolean).join(" ").trim() : ""}`,
-    );
-    if (stderr) {
-      console.warn(`Shortcuts warning: ${stderr}`);
-    }
-    return stdout;
+    const { stdout } = await execAsync("shortcuts list --show-identifiers");
+    return stdout.trim() || "No shortcuts found";
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to ${subcommand} shortcut: ${message}`);
+    throw new Error(
+      isExecError(error)
+        ? `Failed to list shortcuts: ${error.message}`
+        : String(error),
+    );
   }
 }
 
-/**
- * Escapes a string for safe use in shell commands by wrapping in single quotes.
- *
- * Handles embedded single quotes by using the '"'"' escape sequence, which closes
- * the current single-quoted string, adds a double-quoted single quote, then reopens
- * single quotes. This approach is more reliable than backslash escaping.
- *
- * @param {string} str - The string to escape for shell command usage
- * @returns The escaped string wrapped in single quotes, safe for shell execution
- *
- * @example
- * ```typescript
- * shellEscape("My Shortcut");           // "'My Shortcut'"
- * shellEscape("O'Reilly's Book");       // "'O'\"'\"'Reilly'\"'\"'s Book'"
- * shellEscape("Simple text");           // "'Simple text'"
- * shellEscape("");                      // "''"
- * ```
- *
- * @security This function is critical for preventing shell injection attacks.
- * Always use this function when passing user input or dynamic content to shell commands.
- */ export function shellEscape(str: string) {
-  return `'${str.replace(/'/g, "'\"'\"'")}'`;
+export async function runShortcut(log: Logger, name: string, input?: string) {
+  log.info("Running Shortcut started", { hasInput: !!input, name });
+
+  const escapedName = escapeAppleScriptString(name);
+  const script = input
+    ? `tell application "Shortcuts Events" to run the shortcut named "${escapedName}" with input "${escapeAppleScriptString(input)}"`
+    : `tell application "Shortcuts Events" to run the shortcut named "${escapedName}"`;
+  const command = `osascript -e ${shellEscape(script)}`;
+
+  log.debug("AppleScript command constructed", {
+    commandLength: command.length,
+    escapedName,
+    originalName: name,
+    script: script.substring(0, 100) + "...",
+  });
+
+  const startTime = Date.now();
+  try {
+    const { stderr, stdout } = await execAsync(command);
+    const duration = Date.now() - startTime;
+
+    log.info("Shortcut execution completed", {
+      duration,
+      hasStderr: !!stderr,
+      name,
+      outputLength: stdout?.length ?? 0,
+    });
+
+    if (stderr) {
+      log.warn("AppleScript stderr output", {
+        isPermissionRelated:
+          stderr.includes("permission") || stderr.includes("access"),
+        isTimeout: stderr.includes("timeout"),
+        name,
+        stderr,
+      });
+    }
+    return stdout ?? "Shortcut completed successfully";
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    log.error("Shortcut execution failed", {
+      command: command.substring(0, 50) + "...",
+      duration,
+      errorType: isExecError(error) ? "exec" : "other",
+      name,
+    });
+
+    if (
+      isExecError(error) &&
+      (error.message.includes("1743") || error.message.includes("permission"))
+    ) {
+      log.error("Permission denied - automation access required", {
+        name,
+        solution:
+          "Grant automation permissions in System Preferences → Privacy & Security",
+      });
+    }
+
+    throw new Error(
+      isExecError(error)
+        ? `Failed to run ${name} shortcut: ${error.message}`
+        : String(error),
+    );
+  }
+}
+
+export async function viewShortcut(log: Logger, name: string) {
+  log.info("Opening shortcut in editor", { name });
+
+  try {
+    await execAsync(`shortcuts view ${shellEscape(name)}`);
+    log.info("Shortcut opened successfully", { name });
+    return `Opened "${name}" in Shortcuts editor`;
+  } catch (error) {
+    log.warn("CLI view command failed - possible Apple name resolution bug", {
+      name,
+      suggestion: "Try exact case-sensitive name from shortcuts list",
+    });
+    throw error;
+  }
 }

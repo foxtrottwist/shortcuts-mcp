@@ -1,0 +1,33 @@
+import { ExecException } from "child_process";
+
+export function escapeAppleScriptString(str: string): string {
+  return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+export function isExecError(e: unknown): e is ExecException {
+  return typeof e === "object" && e !== null && "stderr" in e && "stdout" in e;
+}
+/**
+ * Escapes a string for safe use in shell commands by wrapping in single quotes.
+ *
+ * Handles embedded single quotes by using the '"'"' escape sequence, which closes
+ * the current single-quoted string, adds a double-quoted single quote, then reopens
+ * single quotes. This approach is more reliable than backslash escaping.
+ *
+ * @param {string} str - The string to escape for shell command usage
+ * @returns The escaped string wrapped in single quotes, safe for shell execution
+ *
+ * @example
+ * ```typescript
+ * shellEscape("My Shortcut");           // "'My Shortcut'"
+ * shellEscape("O'Reilly's Book");       // "'O'\"'\"'Reilly'\"'\"'s Book'"
+ * shellEscape("Simple text");           // "'Simple text'"
+ * shellEscape("");                      // "''"
+ * ```
+ *
+ * @security This function is critical for preventing shell injection attacks.
+ * Always use this function when passing user input or dynamic content to shell commands.
+ */
+export function shellEscape(str: string) {
+  return `'${str.replace(/'/g, "'\"'\"'")}'`;
+}
