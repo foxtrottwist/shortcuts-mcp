@@ -9,6 +9,25 @@ const server = new FastMCP({
 });
 
 server.addTool({
+  annotations: {
+    openWorldHint: true,
+    readOnlyHint: true,
+    title: "List Shortcuts",
+  },
+  description: "List all available Shortcuts",
+  async execute() {
+    return String(await listShortcuts());
+  },
+  name: "list_shortcut",
+  parameters: z.object({}),
+});
+
+server.addTool({
+  annotations: {
+    openWorldHint: true,
+    readOnlyHint: false,
+    title: "Run Shortcut",
+  },
   description: "Execute a macOS Shortcut by name with optional input",
   async execute(args, { log }) {
     log.info("Tool execution started", {
@@ -31,6 +50,24 @@ server.addTool({
 
 server.addTool({
   annotations: {
+    openWorldHint: false,
+    readOnlyHint: false,
+    title: "User Context",
+  },
+  description: "Read, update and add to the User's Profile",
+  async execute() {
+    return "User Profile";
+  },
+  name: "user_context",
+  parameters: z.object({
+    action: z.enum(["read", "update", "add"]),
+    data: z.object({}).optional(),
+    source: z.enum(["user", "system"]).optional().default("user"),
+  }),
+});
+
+server.addTool({
+  annotations: {
     openWorldHint: true,
     readOnlyHint: true,
     title: "View Shortcut",
@@ -45,18 +82,58 @@ server.addTool({
   }),
 });
 
-server.addTool({
-  annotations: {
-    openWorldHint: true,
-    readOnlyHint: true,
-    title: "List Shortcuts",
+server.addResource({
+  async load() {
+    return {
+      text: await listShortcuts(),
+    };
   },
-  description: "List all available macOS Shortcuts",
-  async execute() {
-    return String(await listShortcuts());
+  mimeType: "text/plain",
+  name: "Current shortcuts list",
+  uri: "shortcuts://available",
+});
+
+server.addResource({
+  async load() {
+    return {
+      text: "",
+    };
   },
-  name: "list_shortcut",
-  parameters: z.object({}),
+  mimeType: "application/json",
+  name: "Recent execution history",
+  uri: "shortcuts://runs/recent",
+});
+
+server.addResourceTemplate({
+  arguments: [{ description: "Shortcut name", name: "name", required: true }],
+  async load(args) {
+    return { text: args.name };
+  },
+  mimeType: "text/plain",
+  name: "Per-shortcut execution data",
+  uriTemplate: "shortcuts://runs/{name}",
+});
+
+server.addResource({
+  async load() {
+    return {
+      text: "",
+    };
+  },
+  mimeType: "text/plain",
+  name: "Live system state",
+  uri: "context://system/current",
+});
+
+server.addResource({
+  async load() {
+    return {
+      text: "",
+    };
+  },
+  mimeType: "text/plain",
+  name: "User preferences & usage patterns",
+  uri: "context://user/profile",
 });
 
 server.addPrompt({
