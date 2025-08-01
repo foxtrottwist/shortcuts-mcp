@@ -84,7 +84,7 @@ Trigger automations that work across your Apple ecosystem—save to iCloud, add 
 
 ## Interactive Shortcuts - Full Support ✅
 
-**Breakthrough**: The AppleScript implementation **fully supports interactive shortcuts** with complete UI display capability. File pickers, dialogs, prompts, and menus all appear normally for user interaction.
+The AppleScript implementation **fully supports interactive shortcuts** with complete UI display capability. File pickers, dialogs, prompts, and menus all appear normally for user interaction.
 
 ### What Works Reliably
 
