@@ -52,8 +52,8 @@ server.addTool({
     title: "List Shortcuts",
   },
   description: "List all available macOS Shortcuts",
-  async execute(_, { log }) {
-    return String(await listShortcuts(log));
+  async execute() {
+    return String(await listShortcuts());
   },
   name: "list_shortcut",
   parameters: z.object({}),

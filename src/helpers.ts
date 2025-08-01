@@ -1,9 +1,34 @@
 import { ExecException } from "child_process";
 
+/**
+ * Escapes a string for safe use in AppleScript by doubling backslashes and escaping quotes.
+ *
+ * @param str - The string to escape
+ * @returns The escaped string
+ *
+ * @example
+ * ```typescript
+ * escapeAppleScriptString('say "hello"');    // 'say \\"hello\\"'
+ * escapeAppleScriptString('path\\to\\file');  // 'path\\\\to\\\\file'
+ * ```
+ */
 export function escapeAppleScriptString(str: string): string {
   return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
+/**
+ * Type guard to check if an error is an ExecException with stderr/stdout properties.
+ *
+ * @param e - The error to check
+ * @returns True if the error is an ExecException
+ *
+ * @example
+ * ```typescript
+ * if (isExecError(error)) {
+ *   console.error('Command failed:', error.stderr);
+ * }
+ * ```
+ */
 export function isExecError(e: unknown): e is ExecException {
   return typeof e === "object" && e !== null && "stderr" in e && "stdout" in e;
 }

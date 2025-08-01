@@ -17,7 +17,7 @@ type Logger = {
 
 const execAsync = promisify(exec);
 
-export async function listShortcuts(log: Logger) {
+export async function listShortcuts() {
   try {
     const { stdout } = await execAsync("shortcuts list --show-identifiers");
     return stdout.trim() || "No shortcuts found";
