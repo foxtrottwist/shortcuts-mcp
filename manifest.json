@@ -23,6 +23,10 @@
   },
   "tools": [
     {
+      "name": "list_shortcuts",
+      "description": "List all available macOS Shortcuts"
+    },
+    {
       "name": "run_shortcut",
       "description": "Execute a macOS Shortcut by name with optional input"
     },

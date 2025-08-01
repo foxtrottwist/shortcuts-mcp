@@ -1,219 +1,271 @@
-import { exec, ExecException } from "child_process";
+import { ExecException } from "child_process";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  listShortcuts,
-  runShortcut,
-  shellEscape,
-  viewShortcut,
-} from "../src/shortcuts.js";
+import { listShortcuts, runShortcut, viewShortcut } from "./shortcuts.js";
 
-vi.mock("child_process", () => ({
-  exec: vi.fn(),
-}));
+vi.mock("util", () => {
+  const mockExecAsync = vi.fn();
+  return {
+    _mockExecAsync: mockExecAsync,
+    promisify: vi.fn(() => mockExecAsync),
+  };
+});
 
-const mockExec = vi.mocked(exec);
+const { _mockExecAsync: mockExecAsync } = (await import("util")) as unknown as {
+  _mockExecAsync: ReturnType<typeof vi.fn>;
+};
+
+const mockLogger = {
+  debug: vi.fn(),
+  error: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+};
 
 describe("shortcuts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe("shellEscape", () => {
-    it("should wrap simple strings in single quotes", () => {
-      expect(shellEscape("hello")).toBe("'hello'");
-    });
-
-    it("should escape single quotes correctly", () => {
-      expect(shellEscape("don't")).toBe("'don'\"'\"'t'");
-    });
-
-    it("should handle multiple single quotes", () => {
-      expect(shellEscape("can't won't")).toBe("'can'\"'\"'t won'\"'\"'t'");
-    });
-
-    it("should handle empty strings", () => {
-      expect(shellEscape("")).toBe("''");
-    });
-
-    it("should handle strings with spaces", () => {
-      expect(shellEscape("hello world")).toBe("'hello world'");
-    });
-  });
-
   describe("listShortcuts", () => {
-    it("should execute shortcuts list command", async () => {
+    it("should execute shortcuts list command with --show-identifiers flag", async () => {
       const mockStdout = "Shortcut 1\nShortcut 2\nShortcut 3";
-      mockExec.mockImplementation((command, callback) => {
-        expect(command).toBe("shortcuts list");
-        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
-        callback?.(null, { stderr: "", stdout: mockStdout });
-        return undefined as never;
-      });
+      mockExecAsync.mockResolvedValue({ stderr: "", stdout: mockStdout });
 
       const result = await listShortcuts();
+
+      expect(mockExecAsync).toHaveBeenCalledWith(
+        "shortcuts list --show-identifiers",
+      );
       expect(result).toBe(mockStdout);
     });
 
-    it("should handle stderr warnings", async () => {
-      const mockStdout = "Shortcut 1";
-      const mockStderr = "Warning: deprecated feature";
-      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-      mockExec.mockImplementation((_command, callback) => {
-        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
-        callback?.(null, { stderr: mockStderr, stdout: mockStdout });
-        return undefined as never;
-      });
+    it("should return 'No shortcuts found' for empty output", async () => {
+      mockExecAsync.mockResolvedValue({ stderr: "", stdout: "  \n  " });
 
       const result = await listShortcuts();
-      expect(result).toBe(mockStdout);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "Shortcuts warning: Warning: deprecated feature",
-      );
-
-      consoleSpy.mockRestore();
+      expect(result).toBe("No shortcuts found");
     });
 
     it("should throw error on command failure", async () => {
-      const mockError = new Error("Command failed");
-      mockExec.mockImplementation((_command, callback) => {
-        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
-        callback?.(mockError as ExecException, null); // Cast mockError to ExecException
-        return undefined as never;
-      });
+      const mockError = new Error("Command failed") as ExecException;
+      mockError.stderr = "Error output";
+      mockError.stdout = "";
+      mockExecAsync.mockRejectedValue(mockError);
 
       await expect(listShortcuts()).rejects.toThrow(
-        "Failed to list shortcut: Command failed",
+        "Failed to list shortcuts: Command failed",
       );
+    });
+
+    it("should handle non-ExecException errors", async () => {
+      mockExecAsync.mockRejectedValue(new Error("Unexpected error"));
+
+      await expect(listShortcuts()).rejects.toThrow("Error: Unexpected error");
     });
   });
 
   describe("viewShortcut", () => {
     it("should execute shortcuts view command with escaped name", async () => {
-      const mockStdout = "Shortcut details...";
-      mockExec.mockImplementation((command, callback) => {
-        expect(command).toBe("shortcuts view 'My Shortcut'");
-        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
-        callback?.(null, { stderr: "", stdout: mockStdout });
-        return undefined as never;
-      });
+      mockExecAsync.mockResolvedValue({ stderr: "", stdout: "" });
 
-      const result = await viewShortcut("My Shortcut");
-      expect(result).toBe(mockStdout);
+      const result = await viewShortcut(mockLogger, "My Shortcut");
+
+      expect(mockExecAsync).toHaveBeenCalledWith(
+        "shortcuts view 'My Shortcut'",
+      );
+      expect(result).toBe('Opened "My Shortcut" in Shortcuts editor');
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        "Opening shortcut in editor",
+        { name: "My Shortcut" },
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        "Shortcut opened successfully",
+        { name: "My Shortcut" },
+      );
     });
 
     it("should handle shortcut names with single quotes", async () => {
-      const mockStdout = "Shortcut details...";
-      mockExec.mockImplementation((command, callback) => {
-        expect(command).toBe("shortcuts view 'Don'\"'\"'t Delete'");
-        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
-        callback?.(null, { stderr: "", stdout: mockStdout });
-        return undefined as never;
-      });
+      mockExecAsync.mockResolvedValue({ stderr: "", stdout: "" });
 
-      const result = await viewShortcut("Don't Delete");
-      expect(result).toBe(mockStdout);
+      const result = await viewShortcut(mockLogger, "Don't Delete");
+
+      expect(mockExecAsync).toHaveBeenCalledWith(
+        "shortcuts view 'Don'\"'\"'t Delete'",
+      );
+      expect(result).toBe('Opened "Don\'t Delete" in Shortcuts editor');
+    });
+
+    it("should log warning and throw on failure", async () => {
+      const mockError = new Error("View failed");
+      mockExecAsync.mockRejectedValue(mockError);
+
+      await expect(viewShortcut(mockLogger, "Test")).rejects.toThrow(
+        "View failed",
+      );
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        "CLI view command failed - possible Apple name resolution bug",
+        {
+          name: "Test",
+          suggestion: "Try exact case-sensitive name from shortcuts list",
+        },
+      );
     });
   });
 
   describe("runShortcut", () => {
-    it("should execute shortcuts run command without input", async () => {
+    it("should execute AppleScript command without input", async () => {
       const mockStdout = "Shortcut executed";
-      mockExec.mockImplementation((command, callback) => {
-        expect(command).toBe("shortcuts run 'Test Shortcut'");
-        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
-        callback?.(null, { stderr: "", stdout: mockStdout });
-        return undefined as never;
-      });
+      mockExecAsync.mockResolvedValue({ stderr: "", stdout: mockStdout });
 
-      const result = await runShortcut("Test Shortcut");
+      const result = await runShortcut(mockLogger, "Test Shortcut");
+
+      const expectedScript =
+        'tell application "Shortcuts Events" to run the shortcut named "Test Shortcut"';
+      const expectedCommand = `osascript -e '${expectedScript}'`;
+
+      expect(mockExecAsync).toHaveBeenCalledWith(expectedCommand);
       expect(result).toBe(mockStdout);
+      expect(mockLogger.info).toHaveBeenCalledWith("Running Shortcut started", {
+        hasInput: false,
+        name: "Test Shortcut",
+      });
     });
 
-    it("should execute shortcuts run command with input", async () => {
+    it("should execute AppleScript command with input", async () => {
       const mockStdout = "Shortcut executed with input";
-      mockExec.mockImplementation((command, callback) => {
-        expect(command).toBe("shortcuts run 'Test Shortcut' <<< 'hello world'");
-        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
-        callback?.(null, { stderr: "", stdout: mockStdout });
-        return undefined as never;
-      });
-
-      const result = await runShortcut("Test Shortcut", "hello world");
-      expect(result).toBe(mockStdout);
-    });
-
-    it("should handle empty string input", async () => {
-      const mockStdout = "Shortcut executed";
-      mockExec.mockImplementation((command, callback) => {
-        expect(command).toBe("shortcuts run 'Test Shortcut'");
-        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
-        callback?.(null, { stderr: "", stdout: mockStdout });
-        return undefined as never;
-      });
-
-      const result = await runShortcut("Test Shortcut", "");
-      expect(result).toBe(mockStdout);
-    });
-
-    it("should handle input with single quotes", async () => {
-      const mockStdout = "Shortcut executed";
-      mockExec.mockImplementation((command, callback) => {
-        expect(command).toBe(
-          "shortcuts run 'Test Shortcut' <<< 'don'\"'\"'t stop'",
-        );
-        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
-        callback?.(null, { stderr: "", stdout: mockStdout });
-        return undefined as never;
-      });
-
-      const result = await runShortcut("Test Shortcut", "don't stop");
-      expect(result).toBe(mockStdout);
-    });
-
-    it("should handle shortcut names and input with special characters", async () => {
-      const mockStdout = "Complex test passed";
-      mockExec.mockImplementation((command, callback) => {
-        expect(command).toBe(
-          "shortcuts run 'My \"Special\" Shortcut' <<< 'input with $pecial ch@rs'",
-        );
-        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
-        callback?.(null, { stderr: "", stdout: mockStdout });
-        return undefined as never;
-      });
+      mockExecAsync.mockResolvedValue({ stderr: "", stdout: mockStdout });
 
       const result = await runShortcut(
-        'My "Special" Shortcut',
-        "input with $pecial ch@rs",
+        mockLogger,
+        "Test Shortcut",
+        "hello world",
       );
+
+      const expectedScript =
+        'tell application "Shortcuts Events" to run the shortcut named "Test Shortcut" with input "hello world"';
+      const expectedCommand = `osascript -e '${expectedScript}'`;
+
+      expect(mockExecAsync).toHaveBeenCalledWith(expectedCommand);
       expect(result).toBe(mockStdout);
+      expect(mockLogger.info).toHaveBeenCalledWith("Running Shortcut started", {
+        hasInput: true,
+        name: "Test Shortcut",
+      });
+    });
+
+    it("should handle names and input with special characters", async () => {
+      const mockStdout = "Success";
+      mockExecAsync.mockResolvedValue({ stderr: "", stdout: mockStdout });
+
+      const result = await runShortcut(
+        mockLogger,
+        'My "Special" Shortcut',
+        'input with "quotes"',
+      );
+
+      const expectedScript =
+        'tell application "Shortcuts Events" to run the shortcut named "My \\"Special\\" Shortcut" with input "input with \\"quotes\\""';
+      const expectedCommand = `osascript -e '${expectedScript}'`;
+
+      expect(mockExecAsync).toHaveBeenCalledWith(expectedCommand);
+      expect(result).toBe(mockStdout);
+    });
+
+    it("should handle stderr warnings", async () => {
+      const mockStdout = "Executed";
+      const mockStderr = "Warning: permission required";
+      mockExecAsync.mockResolvedValue({
+        stderr: mockStderr,
+        stdout: mockStdout,
+      });
+
+      const result = await runShortcut(mockLogger, "Test");
+
+      expect(result).toBe(mockStdout);
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        "AppleScript stderr output",
+        {
+          isPermissionRelated: true,
+          isTimeout: false,
+          name: "Test",
+          stderr: mockStderr,
+        },
+      );
+    });
+
+    it("should handle timeout warnings", async () => {
+      const mockStderr = "Error: operation timeout";
+      mockExecAsync.mockResolvedValue({ stderr: mockStderr, stdout: "Result" });
+
+      await runShortcut(mockLogger, "Test");
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        "AppleScript stderr output",
+        {
+          isPermissionRelated: false,
+          isTimeout: true,
+          name: "Test",
+          stderr: mockStderr,
+        },
+      );
+    });
+
+    it("should handle null stdout", async () => {
+      mockExecAsync.mockResolvedValue({ stderr: "", stdout: null });
+
+      const result = await runShortcut(mockLogger, "Test");
+
+      expect(result).toBe("Shortcut completed successfully");
+    });
+
+    it("should handle permission errors", async () => {
+      const mockError = new Error(
+        "Error 1743: Permission denied",
+      ) as ExecException;
+      mockError.stderr = "Permission error";
+      mockError.stdout = "";
+      mockExecAsync.mockRejectedValue(mockError);
+
+      await expect(runShortcut(mockLogger, "Test")).rejects.toThrow(
+        "Failed to run Test shortcut: Error 1743: Permission denied",
+      );
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        "Permission denied - automation access required",
+        {
+          name: "Test",
+          solution:
+            "Grant automation permissions in System Preferences → Privacy & Security",
+        },
+      );
+    });
+
+    it("should handle generic errors", async () => {
+      const mockError = new Error("Generic error");
+      mockExecAsync.mockRejectedValue(mockError);
+
+      await expect(runShortcut(mockLogger, "Test")).rejects.toThrow(
+        "Error: Generic error",
+      );
     });
   });
 
   describe("error handling", () => {
     it("should handle non-Error objects thrown", async () => {
-      mockExec.mockImplementation((_command, callback) => {
-        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
-        callback?.("String error", null);
-        return undefined as never;
-      });
+      mockExecAsync.mockRejectedValue("String error");
 
-      await expect(listShortcuts()).rejects.toThrow(
-        "Failed to list shortcut: String error",
-      );
+      await expect(listShortcuts()).rejects.toThrow("String error");
     });
 
     it("should preserve original error messages", async () => {
-      const originalError = new Error("Permission denied");
-      mockExec.mockImplementation((_command, callback) => {
-        // @ts-expect-error: TypeScript struggles with exec overloads and vi.mocked type inference for the callback.
-        callback?.(originalError as ExecException, null); // Cast originalError to ExecException
-        return undefined as never;
-      });
+      const originalError = new Error("Permission denied") as ExecException;
+      originalError.stderr = "";
+      originalError.stdout = "";
+      mockExecAsync.mockRejectedValue(originalError);
 
-      await expect(runShortcut("Test")).rejects.toThrow(
-        "Failed to run shortcut: Permission denied",
+      await expect(runShortcut(mockLogger, "Test")).rejects.toThrow(
+        "Failed to run Test shortcut: Permission denied",
       );
     });
   });
