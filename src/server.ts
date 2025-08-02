@@ -89,7 +89,22 @@ server.addTool({
   name: "user_context",
   parameters: z.object({
     action: z.enum(["read", "update"]),
-    data: z.object({}).optional(),
+    data: z
+      .object({
+        context: z
+          .object({
+            "current-projects": z.array(z.string()).optional(),
+            "focus-areas": z.array(z.string()).optional(),
+          })
+          .optional(),
+        preferences: z
+          .object({
+            "favorite-shortcuts": z.array(z.string()).optional(),
+            "workflow-patterns": z.record(z.array(z.string())).optional(),
+          })
+          .optional(),
+      })
+      .optional(),
     source: z.enum(["user", "system"]).optional().default("user"),
   }),
 });
