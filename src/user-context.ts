@@ -64,7 +64,6 @@ export async function ensureDataDirectory() {
 
   await mkdir(DATA_DIRECTORY, { recursive: true });
   await mkdir(EXECUTIONS, { recursive: true });
-  await mkdir(SHORTCUTS, { recursive: true });
   await writeFile(USER_PROFILE, JSON.stringify({}));
 }
 

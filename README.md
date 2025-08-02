@@ -9,7 +9,7 @@ Your shortcuts collection handles everything from quick utilities to complex wor
 ## What You Get
 
 - **Interactive Support**: File pickers, dialogs, and prompts work normally through AppleScript execution
-- **Hybrid Integration**: AppleScript for compatibility + CLI for discovery and management  
+- **Hybrid Integration**: AppleScript for compatibility + CLI for discovery and management
 - **Permission Handling**: Location services, system integrations work with proper permission context
 - **All Shortcut Types**: Interactive workflows and automation both work reliably
 - **Cross-Device Sync**: Shortcuts sync across Apple devices for ecosystem-wide automation
@@ -70,7 +70,7 @@ Claude can browse your complete shortcuts library and suggest options for specif
 
 ```
 Claude, run my "Get Weather" shortcut
-Claude, run "Create QR Code" 
+Claude, run "Create QR Code"
 Claude, execute my "File Organizer"
 ```
 
@@ -99,6 +99,7 @@ Claude, run my "Create Contact" shortcut
 **Result**: Forms and dialogs appear normally. You can fill out contact information, select files, or interact with any UI elements as if running the shortcut manually.
 
 **Error Handling**:
+
 - **"User canceled"**: Dialog was dismissed or timed out
 - **"missing value"**: Interaction completed but returned no data
 - **Successful completion**: Normal data output from interaction
@@ -129,7 +130,7 @@ Claude ←→ MCP Server ←→ [AppleScript Execution + CLI Discovery] ←→ S
 AppleScript integration supports interactive and automated shortcuts. Build shortcuts that take advantage of this:
 
 - **Interactive workflows** with file selection and user input
-- **Automated processes** for background execution  
+- **Automated processes** for background execution
 - **Hybrid approaches** combining interaction with automation
 - **Cross-device integration** across your Apple ecosystem
 
@@ -145,17 +146,19 @@ AppleScript integration supports interactive and automated shortcuts. Build shor
 While all shortcuts work, some integrate better with Claude workflows:
 
 - **Return clear text output** that Claude can understand and act on
-- **Provide completion messages** rather than silent operations  
+- **Provide completion messages** rather than silent operations
 - **Include error handling** with informative responses
 - **Design for both modes** when possible (interactive + automated)
 
 **Examples**:
+
 - **File Processing**: "Organize Files" → Returns summary with file counts and locations
-- **Weather**: "Get Weather Report" → Returns structured weather data as text  
+- **Weather**: "Get Weather Report" → Returns structured weather data as text
 - **System Tasks**: "Deploy Project" → Returns deployment status and any issues
 - **Cross-Device**: "Create Event" → Returns confirmation with calendar integration details
 
 ### Real-World Interactive Examples
+
 - **"Choose Files for Upload"**: File picker dialog for document selection
 - **"Custom QR Generator"**: Input form for text/URL entry with format options
 - **"Photo Processing Menu"**: Image picker followed by processing options menu
@@ -168,11 +171,13 @@ While all shortcuts work, some integrate better with Claude workflows:
 
 **AppleScript Integration**: Native `osascript` execution bypasses subprocess permission limitations that caused location-based shortcuts to hang
 
-**Dual-Layer Security**: 
+**Dual-Layer Security**:
+
 - Shell escaping for command construction safety
 - AppleScript string escaping for script content protection
 
-**Error Detection**: 
+**Error Detection**:
+
 - Apple CLI bug patterns identified and handled
 - Permission error codes (1743) detected with solution guidance
 - Timeout behaviors managed gracefully
@@ -180,6 +185,7 @@ While all shortcuts work, some integrate better with Claude workflows:
 ### MCP Integration
 
 1. **Tools**:
+
    - `run_shortcut` - AppleScript execution with comprehensive logging
    - `view_shortcut` - CLI editor opening with fallback guidance
    - `list_shortcut` - Fast CLI discovery of available shortcuts
@@ -191,16 +197,19 @@ While all shortcuts work, some integrate better with Claude workflows:
 ## Real-World Examples
 
 ### Location-Based Workflows
+
 - **"Find Coffee Shops"**: Location services handled properly via AppleScript context
 - **"Weather for Current Location"**: Geographic permissions work reliably
 - **"Traffic to Home"**: Maps integration with location access
 
 ### System Integration
+
 - **"Backup Notes"**: File system operations with proper permissions
 - **"System Status Report"**: Hardware monitoring and reporting
 - **"Network Diagnostics"**: System-level network analysis
 
 ### Cross-Device Automation
+
 - **"Meeting Prep"**: Calendar, Messages, and device synchronization
 - **"Travel Notifications"**: Cross-device alerts and reminders
 - **"Shared Workspace Setup"**: Multi-device configuration automation
@@ -301,11 +310,13 @@ Monitor comprehensive logging in Claude Desktop console for timing, permission d
 ### Performance & Reliability
 
 ### Execution Characteristics
+
 - **Permission Context**: Reliable execution vs CLI subprocess limitations
 - **Error Recovery**: Handling of Apple CLI bugs and permission issues
 - **Logging Detail**: Performance timing, debugging info, permission detection
 
 ### Reliability Improvements
+
 - ✅ **Interactive shortcuts**: File pickers and dialogs work normally
 - ✅ **Location-based shortcuts**: No more hanging on permission requests
 - ✅ **Permission handling**: Proper automation context for all shortcut types

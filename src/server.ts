@@ -2,6 +2,7 @@ import { FastMCP } from "fastmcp";
 import { z } from "zod";
 
 import { listShortcuts, runShortcut, viewShortcut } from "./shortcuts.js";
+import { loadUserProfile, saveUserProfile } from "./user-context.js";
 
 const server = new FastMCP({
   name: "Shortcuts",
@@ -55,12 +56,39 @@ server.addTool({
     title: "User Context",
   },
   description: "Read, update and add to the User's Profile",
-  async execute() {
-    return "User Profile";
+  async execute(args, { log }) {
+    const { action, data = {}, source } = args;
+
+    log.info("User context operation started", {
+      action,
+      hasData: Object.keys(data).length > 0,
+      source,
+    });
+
+    switch (action) {
+      case "read": {
+        const profile = await loadUserProfile();
+        log.info("User profile loaded", {
+          hasContext: !!profile.context,
+          hasPreferences: !!profile.preferences,
+        });
+
+        return JSON.stringify(profile);
+      }
+      case "update": {
+        const updated = await saveUserProfile(data);
+        log.info("User profile updated", {
+          source,
+          updatedFields: Object.keys(data),
+        });
+
+        return JSON.stringify(updated);
+      }
+    }
   },
   name: "user_context",
   parameters: z.object({
-    action: z.enum(["read", "update", "add"]),
+    action: z.enum(["read", "update"]),
     data: z.object({}).optional(),
     source: z.enum(["user", "system"]).optional().default("user"),
   }),
