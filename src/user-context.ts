@@ -3,12 +3,28 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 
 import { isDirectory, isFile } from "./helpers.js";
 
-const STORAGE = `${process.env.HOME}/.shortcuts-mcp/`;
-const USER_PROFILE = `${STORAGE}/user-profile.json`;
-const EXECUTIONS = `${STORAGE}/executions/`;
-const SHORTCUTS = `${STORAGE}/shortcuts/`;
+/*
+~/.shortcuts-mcp/
+├── user-profile.json          # User preferences and context settings
+└── executions/
+    ├── 2025-08-01.json        # Daily execution logs (raw data)
+    ├── 2025-07-31.json        # Previous daily logs
+    ├── recent.json            # Last 50 executions (quick access)
+    └── statistics.json        # 30-day computed statistics
 
-export type ShortCutStatistics = {
+# File Contents:
+# user-profile.json    - Manual preferences, current projects, focus areas
+# daily logs          - Individual execution records with timestamps
+# recent.json         - Cache of most recent executions  
+# statistics.json     - Computed stats: totals, timing, per-shortcut data
+ */
+
+const DATA_DIRECTORY = `${process.env.HOME}/.shortcuts-mcp/`;
+const USER_PROFILE = `${DATA_DIRECTORY}/user-profile.json`;
+const EXECUTIONS = `${DATA_DIRECTORY}/executions/`;
+const STATISTICS = `${EXECUTIONS}/statistics.json`;
+
+export type ShortCutStatistics = Partial<{
   executions: {
     failures: number;
     successes: number;
@@ -28,7 +44,7 @@ export type ShortCutStatistics = {
     max: number;
     min: number;
   };
-};
+}>;
 
 export type UserProfile = Partial<{
   context: {
@@ -42,22 +58,37 @@ export type UserProfile = Partial<{
 }>;
 
 export async function ensureDataDirectory() {
-  if (await isDirectory(STORAGE)) {
+  if (await isDirectory(DATA_DIRECTORY)) {
     return;
   }
 
-  await mkdir(STORAGE, { recursive: true });
+  await mkdir(DATA_DIRECTORY, { recursive: true });
   await mkdir(EXECUTIONS, { recursive: true });
   await mkdir(SHORTCUTS, { recursive: true });
   await writeFile(USER_PROFILE, JSON.stringify({}));
 }
 
-export async function loadUserProfile() {
-  if (await isFile(USER_PROFILE)) {
-    const userProfile = await readFile(USER_PROFILE, "utf8");
+export async function loadStatistics() {
+  if (await isFile(STATISTICS)) {
+    const stats = await readFile(STATISTICS, "utf8");
 
     try {
-      return JSON.parse(userProfile) as UserProfile;
+      return JSON.parse(stats) as ShortCutStatistics;
+    } catch {
+      throw new Error("User statistics corrupted - please reset");
+    }
+  }
+
+  await ensureDataDirectory();
+  return {};
+}
+
+export async function loadUserProfile() {
+  if (await isFile(USER_PROFILE)) {
+    const profile = await readFile(USER_PROFILE, "utf8");
+
+    try {
+      return JSON.parse(profile) as UserProfile;
     } catch {
       throw new Error("User profile corrupted - please reset");
     }
@@ -65,6 +96,13 @@ export async function loadUserProfile() {
 
   await ensureDataDirectory();
   return {};
+}
+
+export async function saveStatistics(data: ShortCutStatistics) {
+  const stats = await loadStatistics();
+  const updatedStats = deepmerge()(stats, data);
+  await writeFile(STATISTICS, JSON.stringify(updatedStats));
+  return updatedStats;
 }
 
 export async function saveUserProfile(data: UserProfile) {
