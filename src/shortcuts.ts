@@ -7,6 +7,7 @@ import {
   isExecError,
   shellEscape,
 } from "./helpers.js";
+import { recordExecution } from "./user-context.js";
 
 type Logger = {
   debug: (message: string, data?: SerializableValue) => void;
@@ -67,7 +68,11 @@ export async function runShortcut(log: Logger, name: string, input?: string) {
         stderr,
       });
     }
-    return stdout ?? "Shortcut completed successfully";
+
+    const result = stdout ?? "Shortcut completed successfully";
+    await recordExecution(name, input, result, duration, true);
+
+    return result;
   } catch (error) {
     const duration = Date.now() - startTime;
     log.error("Shortcut execution failed", {
@@ -87,6 +92,8 @@ export async function runShortcut(log: Logger, name: string, input?: string) {
           "Grant automation permissions in System Preferences → Privacy & Security",
       });
     }
+
+    await recordExecution(name, input, String(error), duration, false);
 
     throw new Error(
       isExecError(error)

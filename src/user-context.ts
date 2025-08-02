@@ -20,9 +20,18 @@ import { isDirectory, isFile } from "./helpers.js";
  */
 
 const DATA_DIRECTORY = `${process.env.HOME}/.shortcuts-mcp/`;
-const USER_PROFILE = `${DATA_DIRECTORY}/user-profile.json`;
-const EXECUTIONS = `${DATA_DIRECTORY}/executions/`;
-const STATISTICS = `${EXECUTIONS}/statistics.json`;
+const USER_PROFILE = `${DATA_DIRECTORY}user-profile.json`;
+const EXECUTIONS = `${DATA_DIRECTORY}executions/`;
+const STATISTICS = `${EXECUTIONS}statistics.json`;
+
+export type ShortCutExecution = {
+  duration: number;
+  input: string;
+  output: string;
+  shortcut: string;
+  success: boolean;
+  timestamp: string;
+};
 
 export type ShortCutStatistics = Partial<{
   executions: {
@@ -64,7 +73,23 @@ export async function ensureDataDirectory() {
 
   await mkdir(DATA_DIRECTORY, { recursive: true });
   await mkdir(EXECUTIONS, { recursive: true });
+  await writeFile(STATISTICS, JSON.stringify({}));
   await writeFile(USER_PROFILE, JSON.stringify({}));
+}
+
+export async function loadExecutions(path: string) {
+  if (await isFile(path)) {
+    const executions = await readFile(path, "utf8");
+
+    try {
+      return JSON.parse(executions) as ShortCutExecution[];
+    } catch {
+      throw new Error("User executions corrupted - please reset");
+    }
+  }
+
+  await ensureDataDirectory();
+  return [];
 }
 
 export async function loadStatistics() {
@@ -95,6 +120,32 @@ export async function loadUserProfile() {
 
   await ensureDataDirectory();
   return {};
+}
+
+export async function recordExecution(
+  shortcut = "null",
+  input = "",
+  output = "null",
+  duration = 0,
+  success = false,
+) {
+  const timestamp = new Date().toISOString();
+  const dateString = timestamp.split("T")[0]; // "2025-08-02"
+  const filename = `${dateString}.json`;
+  const path = `${EXECUTIONS}${filename}`;
+
+  const execution: ShortCutExecution = {
+    duration,
+    input,
+    output,
+    shortcut,
+    success,
+    timestamp,
+  };
+
+  const executions = await loadExecutions(path);
+  executions.push(execution);
+  await writeFile(path, JSON.stringify(executions));
 }
 
 export async function saveStatistics(data: ShortCutStatistics) {
