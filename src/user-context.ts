@@ -55,16 +55,16 @@ export type ShortCutStatistics = Partial<{
   };
 }>;
 
-export type UserProfile = Partial<{
-  context: {
-    "current-projects": string[];
-    "focus-areas": string[];
+export type UserProfile = {
+  context?: {
+    "current-projects"?: string[];
+    "focus-areas"?: string[];
   };
-  preferences: {
-    "favorite-shortcuts": string[];
-    "workflow-patterns": Record<string, string[]>;
+  preferences?: {
+    "favorite-shortcuts"?: string[];
+    "workflow-patterns"?: Record<string, string[]>;
   };
-}>;
+};
 
 export async function ensureDataDirectory() {
   if (await isDirectory(DATA_DIRECTORY)) {
@@ -75,6 +75,16 @@ export async function ensureDataDirectory() {
   await mkdir(EXECUTIONS, { recursive: true });
   await writeFile(STATISTICS, JSON.stringify({}));
   await writeFile(USER_PROFILE, JSON.stringify({}));
+}
+
+export function getSystemState() {
+  return {
+    dayOfWeek: new Date().getDay(),
+    hour: new Date().getHours(),
+    localTime: new Date().toLocaleString(),
+    timestamp: new Date().toISOString(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  };
 }
 
 export async function loadExecutions(path: string) {
