@@ -13,7 +13,8 @@ Your shortcuts collection handles everything from quick utilities to complex wor
 - **Permission Handling**: Location services, system integrations work with proper permission context
 - **All Shortcut Types**: Interactive workflows and automation both work reliably
 - **Cross-Device Sync**: Shortcuts sync across Apple devices for ecosystem-wide automation
-- **Reliable Execution**: No more hanging on permission requests or interactive elements
+- **Reliable Execution**: No hanging on permission requests or interactive elements
+- **Local Usage Tracking**: Execution history and preferences stored only on your computer
 
 ## Installation
 
@@ -62,9 +63,11 @@ File pickers and dialogs appear normally for user interaction. All shortcut type
 
 ```
 What shortcuts do I have for file processing?
+What shortcuts have I used this week?
+Which of my shortcuts work best for photo editing?
 ```
 
-Claude can browse your complete shortcuts library and suggest options for specific tasks.
+Claude can browse your complete shortcuts library, check your usage history (stored locally), and suggest options based on what's worked for you before.
 
 ### Examples That Work
 
@@ -75,6 +78,36 @@ Claude, execute my "File Organizer"
 ```
 
 Both automated and interactive shortcuts work reliably through AppleScript execution.
+
+## Execution Tracking - Local Organization 📝
+
+The server keeps track of your shortcut usage to help organize your workflow. **All execution history and preferences stay on your computer** - no data is transmitted anywhere.
+
+### What Gets Tracked
+
+- Which shortcuts you run and when
+- Execution success/failure for debugging
+- Basic preferences you set through Claude
+- Usage patterns for shortcut suggestions
+
+### Privacy-First Design
+
+- Everything stored in `~/.shortcuts-mcp/` on your Mac
+- No cloud sync, no data sharing, no external connections
+- You can delete the folder anytime to reset
+- Only you and Claude (locally) can access this information
+
+### Practical Benefits
+
+After using shortcuts for a while, you can ask Claude things like:
+
+```
+What shortcuts have I used this week?
+Which shortcuts failed recently?
+Remember I prefer the "Photo Editor Pro" shortcut for image work
+```
+
+Takes a few runs to build useful history - the tracking helps Claude give better suggestions based on what actually works for you.
 
 ## Interactive Shortcuts - Full Support ✅
 
@@ -186,12 +219,18 @@ While all shortcuts work, some integrate better with Claude workflows:
 
 1. **Tools**:
    - `run_shortcut` - AppleScript execution with comprehensive logging
+   - `user_context` - Read and update local preferences and usage tracking
    - `view_shortcut` - CLI editor opening with fallback guidance
-   - `list_shortcut` - Fast CLI discovery of available shortcuts
 
-2. **Enhanced Prompts**: AI-powered shortcut recommendation with name resolution strategies
+2. **Resources** (automatically embedded):
+   - `shortcuts://available` - Current shortcuts list
+   - `execution://runs/recent` - Recent execution history (local only)
+   - `context://system/current` - System state for time-based suggestions
+   - `context://user/profile` - Local user preferences and patterns
 
-3. **Logging Framework**: Performance tracking, permission detection, debugging information
+3. **Enhanced Prompts**: AI-powered shortcut recommendation with name resolution strategies
+
+4. **Local Data Storage**: Performance tracking, permission detection, debugging information (stays on your computer)
 
 ## Real-World Examples
 
@@ -247,8 +286,11 @@ npm run build:dxt
 src/
 ├── server.ts              # MCP server configuration
 ├── shortcuts.ts           # AppleScript + CLI integration
+├── user-context.ts        # Local execution tracking and preferences
 ├── helpers.ts             # Security and utility functions
-└── shortcuts.test.ts      # Comprehensive test suite
+├── shortcuts.test.ts      # AppleScript execution tests
+├── user-context.test.ts   # User context and tracking tests
+└── helpers.test.ts        # Security function tests
 ```
 
 ### Core Functions
@@ -268,10 +310,10 @@ escapeAppleScriptString(content); // AppleScript safety
 
 ### Testing
 
-Comprehensive test suite covering AppleScript integration, security functions, error handling scenarios, and logging validation:
+Comprehensive test suite with 63 tests covering AppleScript integration, user context tracking, security functions, error handling scenarios, and logging validation:
 
 ```bash
-npm run test        # Run test suite with AppleScript mocks
+npm run test        # Run complete test suite (63 tests)
 npm run lint        # Linting and type checking
 npm run format      # Code formatting
 ```
