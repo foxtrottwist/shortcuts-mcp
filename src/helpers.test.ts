@@ -1,13 +1,26 @@
 import { ExecException } from "child_process";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   escapeAppleScriptString,
+  isDirectory,
   isExecError,
+  isFile,
   shellEscape,
 } from "./helpers.js";
 
+vi.mock("fs/promises", () => ({
+  stat: vi.fn(),
+}));
+
+const { stat } = await import("fs/promises");
+const mockStat = stat as ReturnType<typeof vi.fn>;
+
 describe("helpers", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe("shellEscape", () => {
     it("should wrap simple strings in single quotes", () => {
       expect(shellEscape("hello")).toBe("'hello'");
@@ -108,6 +121,66 @@ describe("helpers", () => {
       error.cmd = "test command";
 
       expect(isExecError(error)).toBe(true);
+    });
+  });
+
+  describe("isDirectory", () => {
+    it("should return true for directories", async () => {
+      mockStat.mockResolvedValueOnce({
+        isDirectory: () => true,
+        isFile: () => false,
+      });
+
+      const result = await isDirectory("/some/path");
+      expect(result).toBe(true);
+      expect(mockStat).toHaveBeenCalledWith("/some/path");
+    });
+
+    it("should return false for files", async () => {
+      mockStat.mockResolvedValueOnce({
+        isDirectory: () => false,
+        isFile: () => true,
+      });
+
+      const result = await isDirectory("/some/file.txt");
+      expect(result).toBe(false);
+    });
+
+    it("should return false on stat error", async () => {
+      mockStat.mockRejectedValueOnce(new Error("File not found"));
+
+      const result = await isDirectory("/nonexistent");
+      expect(result).toBe(false);
+    });
+  });
+
+  describe("isFile", () => {
+    it("should return true for files", async () => {
+      mockStat.mockResolvedValueOnce({
+        isDirectory: () => false,
+        isFile: () => true,
+      });
+
+      const result = await isFile("/some/file.txt");
+      expect(result).toBe(true);
+      expect(mockStat).toHaveBeenCalledWith("/some/file.txt");
+    });
+
+    it("should return false for directories", async () => {
+      mockStat.mockResolvedValueOnce({
+        isDirectory: () => true,
+        isFile: () => false,
+      });
+
+      const result = await isFile("/some/directory");
+      expect(result).toBe(false);
+    });
+
+    it("should return false on stat error", async () => {
+      mockStat.mockRejectedValueOnce(new Error("File not found"));
+
+      const result = await isFile("/nonexistent");
+      expect(result).toBe(false);
     });
   });
 });

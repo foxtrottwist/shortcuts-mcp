@@ -284,7 +284,7 @@ npm run format      # Code formatting
 Grant automation permissions in System Preferences → Privacy & Security → Automation. Allow Terminal/Claude Desktop to control "Shortcuts Events."
 
 **"Shortcut not found" with CLI commands**
-Apple CLI has name resolution bugs. AppleScript execution is more forgiving. Use exact names from `list_shortcut` output or try UUID fallback.
+Apple CLI has name resolution bugs. AppleScript execution is more forgiving. Use exact names from `list_shortcut` output. Note: UUID fallback only works with CLI commands (like `shortcuts view`), not with AppleScript execution.
 
 **Location-based shortcuts not working**
 Ensure Location Services are enabled for Shortcuts app in System Preferences → Privacy & Security → Location Services.
