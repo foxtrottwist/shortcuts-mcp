@@ -40,7 +40,7 @@ server.addTool({
           type: "resource",
         },
         {
-          resource: await server.embedded("execution://runs/recent"),
+          resource: await server.embedded("shortcuts://runs/recent"),
           type: "resource",
         },
         {
@@ -86,7 +86,7 @@ server.addTool({
           type: "resource",
         },
         {
-          resource: await server.embedded("execution://runs/recent"),
+          resource: await server.embedded("shortcuts://runs/recent"),
           type: "resource",
         },
         {
@@ -198,7 +198,7 @@ server.addResource({
       text: JSON.stringify(getSystemState()),
     };
   },
-  mimeType: "text/plain",
+  mimeType: "application/json",
   name: "Live system state",
   uri: "context://system/current",
 });
@@ -244,7 +244,6 @@ Then analyze which shortcut(s) would best accomplish this task:
 
 IMPORTANT: When recommending shortcuts:
 - Use the EXACT name from the shortcuts list (case-sensitive)
-- If a shortcut name fails, try using its UUID instead (Apple CLI bug workaround)
 - AppleScript execution (run_shortcut) is more forgiving than CLI commands (view_shortcut)
 
 Be specific about which shortcut to use and how to use it effectively.`;
