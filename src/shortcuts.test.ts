@@ -11,9 +11,16 @@ vi.mock("util", () => {
   };
 });
 
+vi.mock("./user-context.js", () => ({
+  recordExecution: vi.fn(),
+}));
+
 const { _mockExecAsync: mockExecAsync } = (await import("util")) as unknown as {
   _mockExecAsync: ReturnType<typeof vi.fn>;
 };
+
+const { recordExecution } = await import("./user-context.js");
+const mockRecordExecution = recordExecution as ReturnType<typeof vi.fn>;
 
 const mockLogger = {
   debug: vi.fn(),
@@ -130,6 +137,13 @@ describe("shortcuts", () => {
         hasInput: false,
         name: "Test Shortcut",
       });
+      expect(mockRecordExecution).toHaveBeenCalledWith({
+        duration: expect.any(Number),
+        input: undefined,
+        output: mockStdout,
+        shortcut: "Test Shortcut",
+        success: true,
+      });
     });
 
     it("should execute AppleScript command with input", async () => {
@@ -188,7 +202,7 @@ describe("shortcuts", () => {
         {
           isPermissionRelated: true,
           isTimeout: false,
-          name: "Test",
+          shortcut: "Test",
           stderr: mockStderr,
         },
       );
@@ -205,7 +219,7 @@ describe("shortcuts", () => {
         {
           isPermissionRelated: false,
           isTimeout: true,
-          name: "Test",
+          shortcut: "Test",
           stderr: mockStderr,
         },
       );
@@ -239,6 +253,13 @@ describe("shortcuts", () => {
             "Grant automation permissions in System Preferences → Privacy & Security",
         },
       );
+      expect(mockRecordExecution).toHaveBeenCalledWith({
+        duration: expect.any(Number),
+        input: undefined,
+        output: String(mockError),
+        shortcut: "Test",
+        success: false,
+      });
     });
 
     it("should handle generic errors", async () => {

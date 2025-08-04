@@ -1,4 +1,5 @@
 import { ExecException } from "child_process";
+import { stat } from "fs/promises";
 
 /**
  * Escapes a string for safe use in AppleScript by doubling backslashes and escaping quotes.
@@ -15,7 +16,17 @@ import { ExecException } from "child_process";
 export function escapeAppleScriptString(str: string): string {
   return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
-
+/**
+ * Checks if a path is a directory.
+ *
+ * @param path - The path to check
+ * @returns True if path is a directory, false otherwise
+ */
+export async function isDirectory(path: string) {
+  return stat(path)
+    .then((res) => res.isDirectory())
+    .catch(() => false);
+}
 /**
  * Type guard to check if an error is an ExecException with stderr/stdout properties.
  *
@@ -32,6 +43,19 @@ export function escapeAppleScriptString(str: string): string {
 export function isExecError(e: unknown): e is ExecException {
   return typeof e === "object" && e !== null && "stderr" in e && "stdout" in e;
 }
+
+/**
+ * Checks if a path is a file.
+ *
+ * @param path - The path to check
+ * @returns True if path is a file, false otherwise
+ */
+export async function isFile(path: string) {
+  return stat(path)
+    .then((res) => res.isFile())
+    .catch(() => false);
+}
+
 /**
  * Escapes a string for safe use in shell commands by wrapping in single quotes.
  *

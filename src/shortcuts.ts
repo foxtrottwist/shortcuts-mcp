@@ -7,6 +7,7 @@ import {
   isExecError,
   shellEscape,
 } from "./helpers.js";
+import { recordExecution } from "./user-context.js";
 
 type Logger = {
   debug: (message: string, data?: SerializableValue) => void;
@@ -30,10 +31,14 @@ export async function listShortcuts() {
   }
 }
 
-export async function runShortcut(log: Logger, name: string, input?: string) {
-  log.info("Running Shortcut started", { hasInput: !!input, name });
+export async function runShortcut(
+  log: Logger,
+  shortcut: string,
+  input?: string,
+) {
+  log.info("Running Shortcut started", { hasInput: !!input, name: shortcut });
 
-  const escapedName = escapeAppleScriptString(name);
+  const escapedName = escapeAppleScriptString(shortcut);
   const script = input
     ? `tell application "Shortcuts Events" to run the shortcut named "${escapedName}" with input "${escapeAppleScriptString(input)}"`
     : `tell application "Shortcuts Events" to run the shortcut named "${escapedName}"`;
@@ -42,7 +47,7 @@ export async function runShortcut(log: Logger, name: string, input?: string) {
   log.debug("AppleScript command constructed", {
     commandLength: command.length,
     escapedName,
-    originalName: name,
+    originalName: shortcut,
     script: script.substring(0, 100) + "...",
   });
 
@@ -54,8 +59,8 @@ export async function runShortcut(log: Logger, name: string, input?: string) {
     log.info("Shortcut execution completed", {
       duration,
       hasStderr: !!stderr,
-      name,
       outputLength: stdout?.length ?? 0,
+      shortcut,
     });
 
     if (stderr) {
@@ -63,18 +68,22 @@ export async function runShortcut(log: Logger, name: string, input?: string) {
         isPermissionRelated:
           stderr.includes("permission") || stderr.includes("access"),
         isTimeout: stderr.includes("timeout"),
-        name,
+        shortcut,
         stderr,
       });
     }
-    return stdout ?? "Shortcut completed successfully";
+
+    const output = stdout ?? "Shortcut completed successfully";
+    await recordExecution({ duration, input, output, shortcut, success: true });
+
+    return output;
   } catch (error) {
     const duration = Date.now() - startTime;
     log.error("Shortcut execution failed", {
       command: command.substring(0, 50) + "...",
       duration,
       errorType: isExecError(error) ? "exec" : "other",
-      name,
+      name: shortcut,
     });
 
     if (
@@ -82,15 +91,23 @@ export async function runShortcut(log: Logger, name: string, input?: string) {
       (error.message.includes("1743") || error.message.includes("permission"))
     ) {
       log.error("Permission denied - automation access required", {
-        name,
+        name: shortcut,
         solution:
           "Grant automation permissions in System Preferences → Privacy & Security",
       });
     }
 
+    await recordExecution({
+      duration,
+      input,
+      output: String(error),
+      shortcut,
+      success: false,
+    });
+
     throw new Error(
       isExecError(error)
-        ? `Failed to run ${name} shortcut: ${error.message}`
+        ? `Failed to run ${shortcut} shortcut: ${error.message}`
         : String(error),
     );
   }

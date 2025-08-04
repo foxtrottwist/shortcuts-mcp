@@ -9,11 +9,12 @@ Your shortcuts collection handles everything from quick utilities to complex wor
 ## What You Get
 
 - **Interactive Support**: File pickers, dialogs, and prompts work normally through AppleScript execution
-- **Hybrid Integration**: AppleScript for compatibility + CLI for discovery and management  
+- **Hybrid Integration**: AppleScript for compatibility + CLI for discovery and management
 - **Permission Handling**: Location services, system integrations work with proper permission context
 - **All Shortcut Types**: Interactive workflows and automation both work reliably
 - **Cross-Device Sync**: Shortcuts sync across Apple devices for ecosystem-wide automation
-- **Reliable Execution**: No more hanging on permission requests or interactive elements
+- **Reliable Execution**: No hanging on permission requests or interactive elements
+- **Local Usage Tracking**: Execution history and preferences stored only on your computer
 
 ## Installation
 
@@ -62,19 +63,51 @@ File pickers and dialogs appear normally for user interaction. All shortcut type
 
 ```
 What shortcuts do I have for file processing?
+What shortcuts have I used this week?
+Which of my shortcuts work best for photo editing?
 ```
 
-Claude can browse your complete shortcuts library and suggest options for specific tasks.
+Claude can browse your complete shortcuts library, check your usage history (stored locally), and suggest options based on what's worked for you before.
 
 ### Examples That Work
 
 ```
 Claude, run my "Get Weather" shortcut
-Claude, run "Create QR Code" 
+Claude, run "Create QR Code"
 Claude, execute my "File Organizer"
 ```
 
 Both automated and interactive shortcuts work reliably through AppleScript execution.
+
+## Execution Tracking - Local Organization 📝
+
+The server keeps track of your shortcut usage to help organize your workflow. **All execution history and preferences stay on your computer** - no data is transmitted anywhere.
+
+### What Gets Tracked
+
+- Which shortcuts you run and when
+- Execution success/failure for debugging
+- Basic preferences you set through Claude
+- Usage patterns for shortcut suggestions
+
+### Privacy-First Design
+
+- Everything stored in `~/.shortcuts-mcp/` on your Mac
+- No cloud sync, no data sharing, no external connections
+- You can delete the folder anytime to reset
+- Only you and Claude (locally) can access this information
+
+### Practical Benefits
+
+After using shortcuts for a while, you can ask Claude things like:
+
+```
+What shortcuts have I used this week?
+Which shortcuts failed recently?
+Remember I prefer the "Photo Editor Pro" shortcut for image work
+```
+
+Takes a few runs to build useful history - the tracking helps Claude give better suggestions based on what actually works for you.
 
 ## Interactive Shortcuts - Full Support ✅
 
@@ -99,6 +132,7 @@ Claude, run my "Create Contact" shortcut
 **Result**: Forms and dialogs appear normally. You can fill out contact information, select files, or interact with any UI elements as if running the shortcut manually.
 
 **Error Handling**:
+
 - **"User canceled"**: Dialog was dismissed or timed out
 - **"missing value"**: Interaction completed but returned no data
 - **Successful completion**: Normal data output from interaction
@@ -129,7 +163,7 @@ Claude ←→ MCP Server ←→ [AppleScript Execution + CLI Discovery] ←→ S
 AppleScript integration supports interactive and automated shortcuts. Build shortcuts that take advantage of this:
 
 - **Interactive workflows** with file selection and user input
-- **Automated processes** for background execution  
+- **Automated processes** for background execution
 - **Hybrid approaches** combining interaction with automation
 - **Cross-device integration** across your Apple ecosystem
 
@@ -145,17 +179,19 @@ AppleScript integration supports interactive and automated shortcuts. Build shor
 While all shortcuts work, some integrate better with Claude workflows:
 
 - **Return clear text output** that Claude can understand and act on
-- **Provide completion messages** rather than silent operations  
+- **Provide completion messages** rather than silent operations
 - **Include error handling** with informative responses
 - **Design for both modes** when possible (interactive + automated)
 
 **Examples**:
+
 - **File Processing**: "Organize Files" → Returns summary with file counts and locations
-- **Weather**: "Get Weather Report" → Returns structured weather data as text  
+- **Weather**: "Get Weather Report" → Returns structured weather data as text
 - **System Tasks**: "Deploy Project" → Returns deployment status and any issues
 - **Cross-Device**: "Create Event" → Returns confirmation with calendar integration details
 
 ### Real-World Interactive Examples
+
 - **"Choose Files for Upload"**: File picker dialog for document selection
 - **"Custom QR Generator"**: Input form for text/URL entry with format options
 - **"Photo Processing Menu"**: Image picker followed by processing options menu
@@ -168,11 +204,13 @@ While all shortcuts work, some integrate better with Claude workflows:
 
 **AppleScript Integration**: Native `osascript` execution bypasses subprocess permission limitations that caused location-based shortcuts to hang
 
-**Dual-Layer Security**: 
+**Dual-Layer Security**:
+
 - Shell escaping for command construction safety
 - AppleScript string escaping for script content protection
 
-**Error Detection**: 
+**Error Detection**:
+
 - Apple CLI bug patterns identified and handled
 - Permission error codes (1743) detected with solution guidance
 - Timeout behaviors managed gracefully
@@ -181,26 +219,35 @@ While all shortcuts work, some integrate better with Claude workflows:
 
 1. **Tools**:
    - `run_shortcut` - AppleScript execution with comprehensive logging
+   - `user_context` - Read and update local preferences and usage tracking
    - `view_shortcut` - CLI editor opening with fallback guidance
-   - `list_shortcut` - Fast CLI discovery of available shortcuts
 
-2. **Enhanced Prompts**: AI-powered shortcut recommendation with name resolution strategies
+2. **Resources** (automatically embedded):
+   - `shortcuts://available` - Current shortcuts list
+   - `execution://runs/recent` - Recent execution history (local only)
+   - `context://system/current` - System state for time-based suggestions
+   - `context://user/profile` - Local user preferences and patterns
 
-3. **Logging Framework**: Performance tracking, permission detection, debugging information
+3. **Enhanced Prompts**: AI-powered shortcut recommendation with name resolution strategies
+
+4. **Local Data Storage**: Performance tracking, permission detection, debugging information (stays on your computer)
 
 ## Real-World Examples
 
 ### Location-Based Workflows
+
 - **"Find Coffee Shops"**: Location services handled properly via AppleScript context
 - **"Weather for Current Location"**: Geographic permissions work reliably
 - **"Traffic to Home"**: Maps integration with location access
 
 ### System Integration
+
 - **"Backup Notes"**: File system operations with proper permissions
 - **"System Status Report"**: Hardware monitoring and reporting
 - **"Network Diagnostics"**: System-level network analysis
 
 ### Cross-Device Automation
+
 - **"Meeting Prep"**: Calendar, Messages, and device synchronization
 - **"Travel Notifications"**: Cross-device alerts and reminders
 - **"Shared Workspace Setup"**: Multi-device configuration automation
@@ -239,8 +286,11 @@ npm run build:dxt
 src/
 ├── server.ts              # MCP server configuration
 ├── shortcuts.ts           # AppleScript + CLI integration
+├── user-context.ts        # Local execution tracking and preferences
 ├── helpers.ts             # Security and utility functions
-└── shortcuts.test.ts      # Comprehensive test suite
+├── shortcuts.test.ts      # AppleScript execution tests
+├── user-context.test.ts   # User context and tracking tests
+└── helpers.test.ts        # Security function tests
 ```
 
 ### Core Functions
@@ -260,10 +310,10 @@ escapeAppleScriptString(content); // AppleScript safety
 
 ### Testing
 
-Comprehensive test suite covering AppleScript integration, security functions, error handling scenarios, and logging validation:
+Comprehensive test suite with 63 tests covering AppleScript integration, user context tracking, security functions, error handling scenarios, and logging validation:
 
 ```bash
-npm run test        # Run test suite with AppleScript mocks
+npm run test        # Run complete test suite (63 tests)
 npm run lint        # Linting and type checking
 npm run format      # Code formatting
 ```
@@ -276,7 +326,7 @@ npm run format      # Code formatting
 Grant automation permissions in System Preferences → Privacy & Security → Automation. Allow Terminal/Claude Desktop to control "Shortcuts Events."
 
 **"Shortcut not found" with CLI commands**
-Apple CLI has name resolution bugs. AppleScript execution is more forgiving. Use exact names from `list_shortcut` output or try UUID fallback.
+Apple CLI has name resolution bugs. AppleScript execution is more forgiving. Use exact names from `list_shortcut` output. Note: UUID fallback only works with CLI commands (like `shortcuts view`), not with AppleScript execution.
 
 **Location-based shortcuts not working**
 Ensure Location Services are enabled for Shortcuts app in System Preferences → Privacy & Security → Location Services.
@@ -301,11 +351,13 @@ Monitor comprehensive logging in Claude Desktop console for timing, permission d
 ### Performance & Reliability
 
 ### Execution Characteristics
+
 - **Permission Context**: Reliable execution vs CLI subprocess limitations
 - **Error Recovery**: Handling of Apple CLI bugs and permission issues
 - **Logging Detail**: Performance timing, debugging info, permission detection
 
 ### Reliability Improvements
+
 - ✅ **Interactive shortcuts**: File pickers and dialogs work normally
 - ✅ **Location-based shortcuts**: No more hanging on permission requests
 - ✅ **Permission handling**: Proper automation context for all shortcut types

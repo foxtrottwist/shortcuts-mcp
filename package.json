@@ -31,7 +31,8 @@
   "license": "MIT",
   "description": "TypeScript MCP server for macOS Shortcuts automation.",
   "dependencies": {
-    "fastmcp": "^1.27.3",
+    "@fastify/deepmerge": "^3.1.0",
+    "fastmcp": "^3.13.0",
     "zod": "^3.24.4"
   },
   "release": {
