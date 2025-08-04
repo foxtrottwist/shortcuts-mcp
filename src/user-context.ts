@@ -2,6 +2,7 @@ import { deepmerge } from "@fastify/deepmerge";
 import { mkdir, readFile, writeFile } from "fs/promises";
 
 import { isDirectory, isFile } from "./helpers.js";
+import { listShortcuts } from "./shortcuts.js";
 
 /*
 ~/.shortcuts-mcp/
@@ -22,9 +23,18 @@ import { isDirectory, isFile } from "./helpers.js";
 const DATA_DIRECTORY = `${process.env.HOME}/.shortcuts-mcp/`;
 const USER_PROFILE = `${DATA_DIRECTORY}user-profile.json`;
 const EXECUTIONS = `${DATA_DIRECTORY}executions/`;
+const RECENT_EXECUTIONS = `${EXECUTIONS}recents.json`;
+const SHORTCUTS_CACHE = `${DATA_DIRECTORY}shortcuts-cache.txt`;
 const STATISTICS = `${EXECUTIONS}statistics.json`;
 
-export type ShortCutExecution = {
+export type RecentShortcutExecution = {
+  duration: number;
+  shortcut: string;
+  success: boolean;
+  timestamp: string;
+};
+
+export type ShortcutExecution = {
   duration: number;
   input: string;
   output: string;
@@ -77,6 +87,22 @@ export async function ensureDataDirectory() {
   await writeFile(USER_PROFILE, JSON.stringify({}));
 }
 
+export async function getShortcutsList() {
+  if (await isFile(SHORTCUTS_CACHE)) {
+    const shortcuts = await readFile(SHORTCUTS_CACHE, "utf8");
+    const timestamp = shortcuts.match(/<<<(.*?)>>>/)?.[1];
+    if (!isOlderThan24Hrs(timestamp)) {
+      return shortcuts;
+    }
+  }
+
+  await ensureDataDirectory();
+  const timestamp = `Last Updated: <<<${new Date().toISOString()}>>>\n\n`;
+  const shortcuts = await listShortcuts();
+  await writeFile(SHORTCUTS_CACHE, timestamp + shortcuts);
+  return shortcuts;
+}
+
 export function getSystemState() {
   return {
     dayOfWeek: new Date().getDay(),
@@ -87,64 +113,50 @@ export function getSystemState() {
   };
 }
 
-export async function loadExecutions(path: string) {
+export function isOlderThan24Hrs(timestamp?: string) {
+  if (!timestamp) return true;
+  const ts = new Date(timestamp.trim()).getTime();
+  return !isNaN(ts) && Date.now() - ts > 24 * 60 * 60 * 1000;
+}
+
+export async function load<T = unknown>(path: string, defaultValue: T) {
   if (await isFile(path)) {
     const executions = await readFile(path, "utf8");
 
     try {
-      return JSON.parse(executions) as ShortCutExecution[];
+      return JSON.parse(executions) as T;
     } catch {
-      throw new Error("User executions corrupted - please reset");
+      throw new Error(`File at ${path} corrupted - please reset`);
     }
   }
 
   await ensureDataDirectory();
-  return [];
+  return defaultValue;
 }
 
-export async function loadStatistics() {
-  if (await isFile(STATISTICS)) {
-    const stats = await readFile(STATISTICS, "utf8");
-
-    try {
-      return JSON.parse(stats) as ShortCutStatistics;
-    } catch {
-      throw new Error("User statistics corrupted - please reset");
-    }
-  }
-
-  await ensureDataDirectory();
-  return {};
+export async function loadRecents() {
+  return await load<RecentShortcutExecution[]>(RECENT_EXECUTIONS, []);
 }
 
 export async function loadUserProfile() {
-  if (await isFile(USER_PROFILE)) {
-    const profile = await readFile(USER_PROFILE, "utf8");
-
-    try {
-      return JSON.parse(profile) as UserProfile;
-    } catch {
-      throw new Error("User profile corrupted - please reset");
-    }
-  }
-
-  await ensureDataDirectory();
-  return {};
+  return await load<UserProfile>(USER_PROFILE, {});
 }
 
-export async function recordExecution(
-  shortcut = "null",
+export async function recordExecution({
+  duration = 0,
   input = "",
   output = "null",
-  duration = 0,
+  shortcut = "null",
   success = false,
-) {
+}) {
   const timestamp = new Date().toISOString();
   const dateString = timestamp.split("T")[0]; // "2025-08-02"
   const filename = `${dateString}.json`;
   const path = `${EXECUTIONS}${filename}`;
 
-  const execution: ShortCutExecution = {
+  await recordRecents({ duration, shortcut, success, timestamp });
+
+  const execution: ShortcutExecution = {
     duration,
     input,
     output,
@@ -153,20 +165,39 @@ export async function recordExecution(
     timestamp,
   };
 
-  const executions = await loadExecutions(path);
+  const executions = await load<ShortcutExecution[]>(path, []);
   executions.push(execution);
   await writeFile(path, JSON.stringify(executions));
 }
 
+export async function recordRecents({
+  duration = 0,
+  shortcut = "",
+  success = false,
+  timestamp = "",
+}) {
+  const recent: RecentShortcutExecution = {
+    duration,
+    shortcut,
+    success,
+    timestamp,
+  };
+
+  const recents = await load<RecentShortcutExecution[]>(RECENT_EXECUTIONS, []);
+  recents.push(recent);
+  const trimmedRecents = recents.slice(-25);
+  await writeFile(RECENT_EXECUTIONS, JSON.stringify(trimmedRecents));
+}
+
 export async function saveStatistics(data: ShortCutStatistics) {
-  const stats = await loadStatistics();
+  const stats = await load<ShortCutStatistics>(STATISTICS, {});
   const updatedStats = deepmerge()(stats, data);
   await writeFile(STATISTICS, JSON.stringify(updatedStats));
   return updatedStats;
 }
 
 export async function saveUserProfile(data: UserProfile) {
-  const profile = await loadUserProfile();
+  const profile = await load<UserProfile>(USER_PROFILE, {});
   const updatedProfile = deepmerge()(profile, data);
   await writeFile(USER_PROFILE, JSON.stringify(updatedProfile));
   return updatedProfile;

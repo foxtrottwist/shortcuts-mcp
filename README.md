@@ -185,7 +185,6 @@ While all shortcuts work, some integrate better with Claude workflows:
 ### MCP Integration
 
 1. **Tools**:
-
    - `run_shortcut` - AppleScript execution with comprehensive logging
    - `view_shortcut` - CLI editor opening with fallback guidance
    - `list_shortcut` - Fast CLI discovery of available shortcuts

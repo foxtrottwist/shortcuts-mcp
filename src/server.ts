@@ -1,9 +1,11 @@
-import { FastMCP } from "fastmcp";
+import { Content, FastMCP } from "fastmcp";
 import { z } from "zod";
 
-import { listShortcuts, runShortcut, viewShortcut } from "./shortcuts.js";
+import { runShortcut, viewShortcut } from "./shortcuts.js";
 import {
+  getShortcutsList,
   getSystemState,
+  loadRecents,
   loadUserProfile,
   saveUserProfile,
 } from "./user-context.js";
@@ -11,20 +13,6 @@ import {
 const server = new FastMCP({
   name: "Shortcuts",
   version: "1.0.0",
-});
-
-server.addTool({
-  annotations: {
-    openWorldHint: true,
-    readOnlyHint: true,
-    title: "List Shortcuts",
-  },
-  description: "List all available Shortcuts",
-  async execute() {
-    return String(await listShortcuts());
-  },
-  name: "list_shortcut",
-  parameters: z.object({}),
 });
 
 server.addTool({
@@ -41,7 +29,30 @@ server.addTool({
       tool: "run_shortcut",
     });
 
-    return await runShortcut(log, args.name, args.input);
+    return {
+      content: [
+        {
+          text: await runShortcut(log, args.name, args.input),
+          type: "text",
+        },
+        {
+          resource: await server.embedded("shortcuts://available"),
+          type: "resource",
+        },
+        {
+          resource: await server.embedded("execution://runs/recent"),
+          type: "resource",
+        },
+        {
+          resource: await server.embedded("context://system/current"),
+          type: "resource",
+        },
+        {
+          resource: await server.embedded("context://user/profile"),
+          type: "resource",
+        },
+      ],
+    };
   },
   name: "run_shortcut",
   parameters: z.object({
@@ -68,7 +79,26 @@ server.addTool({
       hasData: Object.keys(data).length > 0,
     });
 
-    const system = getSystemState();
+    const resources: Record<"content", Content[]> = {
+      content: [
+        {
+          resource: await server.embedded("shortcuts://available"),
+          type: "resource",
+        },
+        {
+          resource: await server.embedded("execution://runs/recent"),
+          type: "resource",
+        },
+        {
+          resource: await server.embedded("context://system/current"),
+          type: "resource",
+        },
+        {
+          resource: await server.embedded("context://user/profile"),
+          type: "resource",
+        },
+      ],
+    };
 
     switch (action) {
       case "read": {
@@ -78,7 +108,8 @@ server.addTool({
           hasPreferences: !!profile.preferences,
         });
 
-        return JSON.stringify({ profile, system });
+        resources.content.push({ text: JSON.stringify(profile), type: "text" });
+        return resources;
       }
       case "update": {
         const profile = await saveUserProfile(data);
@@ -86,7 +117,8 @@ server.addTool({
           updatedFields: Object.keys(data),
         });
 
-        return JSON.stringify({ profile, system });
+        resources.content.push({ text: JSON.stringify(profile), type: "text" });
+        return resources;
       }
     }
   },
@@ -131,7 +163,7 @@ server.addTool({
 server.addResource({
   async load() {
     return {
-      text: await listShortcuts(),
+      text: await getShortcutsList(),
     };
   },
   mimeType: "text/plain",
@@ -142,7 +174,7 @@ server.addResource({
 server.addResource({
   async load() {
     return {
-      text: "",
+      text: JSON.stringify(await loadRecents()),
     };
   },
   mimeType: "application/json",
@@ -163,7 +195,7 @@ server.addResourceTemplate({
 server.addResource({
   async load() {
     return {
-      text: "",
+      text: JSON.stringify(getSystemState()),
     };
   },
   mimeType: "text/plain",
@@ -174,7 +206,7 @@ server.addResource({
 server.addResource({
   async load() {
     return {
-      text: "",
+      text: JSON.stringify(await loadUserProfile()),
     };
   },
   mimeType: "text/plain",
@@ -201,7 +233,7 @@ server.addPrompt({
     return `The user wants to: ${args.task_description}
 ${args.context ? `Context: ${args.context}` : ""}
 
-First, use the list_shortcut tool to see all available shortcuts with their exact names and UUIDs.
+Analyze the available shortcuts and user context from the embedded resources to recommend the best shortcut for this task.
 
 Then analyze which shortcut(s) would best accomplish this task:
 1. Look for exact matches first
@@ -211,7 +243,7 @@ Then analyze which shortcut(s) would best accomplish this task:
 5. Provide usage guidance for the recommended shortcut(s)
 
 IMPORTANT: When recommending shortcuts:
-- Use the EXACT name from the list_shortcut output (case-sensitive)
+- Use the EXACT name from the shortcuts list (case-sensitive)
 - If a shortcut name fails, try using its UUID instead (Apple CLI bug workaround)
 - AppleScript execution (run_shortcut) is more forgiving than CLI commands (view_shortcut)
 
