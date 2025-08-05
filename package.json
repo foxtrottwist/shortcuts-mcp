@@ -8,6 +8,7 @@
     "pack:dxt": "mkdir temp-dxt-build && cd temp-dxt-build && cp ../package*.json ../manifest.json . && cp -r ../dist . && NODE_ENV=production npm ci --omit=dev && npx dxt pack . ../shortcuts-mcp-${npm_package_version}.dxt && cd .. && rm -rf temp-dxt-build",
     "start": "tsx src/server.ts",
     "dev": "fastmcp dev src/server.ts",
+    "inspect": "fastmcp inspect src/server.ts",
     "lint": "prettier --check . && eslint . && tsc --noEmit",
     "test": "vitest run",
     "format": "prettier --write . && eslint --fix ."
@@ -33,6 +34,7 @@
   "dependencies": {
     "@fastify/deepmerge": "^3.1.0",
     "fastmcp": "^3.13.0",
+    "pino": "^9.7.0",
     "zod": "^3.24.4"
   },
   "release": {

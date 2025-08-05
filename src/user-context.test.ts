@@ -14,20 +14,17 @@ import {
   saveUserProfile,
 } from "./user-context.js";
 
-// Mock fs/promises
 vi.mock("fs/promises", () => ({
   mkdir: vi.fn(),
   readFile: vi.fn(),
   writeFile: vi.fn(),
 }));
 
-// Mock helpers
 vi.mock("./helpers.js", () => ({
   isDirectory: vi.fn(),
   isFile: vi.fn(),
 }));
 
-// Mock shortcuts
 vi.mock("./shortcuts.js", () => ({
   listShortcuts: vi.fn(),
 }));
