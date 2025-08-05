@@ -21,7 +21,8 @@ server.addTool({
     readOnlyHint: false,
     title: "Run Shortcut",
   },
-  description: "Execute a macOS Shortcut by name with optional input",
+  description:
+    "Execute a macOS Shortcut by name with optional input. Use when users want to run any shortcut including interactive workflows with file pickers, dialogs, location services, and system permissions. All shortcut types are supported through AppleScript integration.",
   async execute(args, { log }) {
     log.info("Tool execution started", {
       hasInput: !!args.input,
@@ -68,9 +69,10 @@ server.addTool({
   annotations: {
     openWorldHint: false,
     readOnlyHint: false,
-    title: "User Context",
+    title: "Usage History & Preferences",
   },
-  description: "Read, update and add to the User's Profile",
+  description:
+    "Access shortcut usage history, execution patterns, and user preferences. Use for questions like 'What shortcuts have I used this week?', 'Which shortcuts failed recently?', 'Show me my most used shortcuts', or when users want to store preferences like 'Remember I prefer Photo Editor Pro for image work' or 'I use the Morning Routine shortcut daily'.",
   async execute(args, { log }) {
     const { action, data = {} } = args;
 
@@ -150,7 +152,8 @@ server.addTool({
     readOnlyHint: true,
     title: "View Shortcut",
   },
-  description: "Open a macOS Shortcut in the Shortcuts editor",
+  description:
+    "Open a macOS Shortcut in the Shortcuts editor for viewing or editing. Use when users want to examine shortcut contents, modify workflows, or troubleshoot shortcut logic. Opens the shortcut directly in the native Shortcuts app.",
   async execute(args) {
     return String(await viewShortcut(args.name));
   },
@@ -161,6 +164,8 @@ server.addTool({
 });
 
 server.addResource({
+  description:
+    "Complete list of available shortcuts with names and identifiers, refreshed every 24 hours. Contains all shortcuts in the user's library for discovery and name validation.",
   async load() {
     return {
       text: await getShortcutsList(),
@@ -172,6 +177,8 @@ server.addResource({
 });
 
 server.addResource({
+  description:
+    "Last 25 shortcut executions with timestamps, success/failure status, duration, and error details. Used for analyzing usage patterns, identifying failed shortcuts, and calculating time-based statistics.",
   async load() {
     return {
       text: JSON.stringify(await loadRecents()),
@@ -184,6 +191,8 @@ server.addResource({
 
 server.addResourceTemplate({
   arguments: [{ description: "Shortcut name", name: "name", required: true }],
+  description:
+    "Execution history for a specific shortcut including success rates, timing patterns, recent failures, and usage frequency. Used for per-shortcut analysis and troubleshooting.",
   async load(args) {
     return { text: args.name };
   },
@@ -193,6 +202,8 @@ server.addResourceTemplate({
 });
 
 server.addResource({
+  description:
+    "Current system time, timezone, day of week, and timestamp. Used for calculating time ranges like 'this week', 'today', 'recently' when analyzing execution history.",
   async load() {
     return {
       text: JSON.stringify(getSystemState()),
@@ -204,6 +215,8 @@ server.addResource({
 });
 
 server.addResource({
+  description:
+    "User preferences including favorite shortcuts, workflow patterns, current projects, and focus areas. Contains stored user preferences and contextual information for personalized recommendations.",
   async load() {
     return {
       text: JSON.stringify(await loadUserProfile()),
@@ -228,7 +241,7 @@ server.addPrompt({
     },
   ],
   description:
-    "Recommend the best shortcut for a specific task based on available shortcuts",
+    "Analyze available shortcuts and user context to recommend the best shortcut for a specific task. Use when users describe what they want to accomplish but don't know which shortcut to use. Provides intelligent shortcut discovery based on task description and user preferences.",
   load: async (args) => {
     return `The user wants to: ${args.task_description}
 ${args.context ? `Context: ${args.context}` : ""}
