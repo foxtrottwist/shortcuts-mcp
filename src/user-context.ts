@@ -2,6 +2,7 @@ import { deepmerge } from "@fastify/deepmerge";
 import { mkdir, readFile, writeFile } from "fs/promises";
 
 import { isDirectory, isFile } from "./helpers.js";
+import { logger } from "./logger.js";
 import { listShortcuts } from "./shortcuts.js";
 
 /*
@@ -81,11 +82,17 @@ export async function ensureDataDirectory() {
     return;
   }
 
-  await mkdir(DATA_DIRECTORY, { recursive: true });
-  await mkdir(EXECUTIONS, { recursive: true });
-  await writeFile(RECENT_EXECUTIONS, JSON.stringify([]));
-  await writeFile(STATISTICS, JSON.stringify({}));
-  await writeFile(USER_PROFILE, JSON.stringify({}));
+  try {
+    await mkdir(DATA_DIRECTORY, { recursive: true });
+    await mkdir(EXECUTIONS, { recursive: true });
+    await writeFile(RECENT_EXECUTIONS, JSON.stringify([]));
+    await writeFile(STATISTICS, JSON.stringify({}));
+    await writeFile(USER_PROFILE, JSON.stringify({}));
+    logger.info("Data directory initialized");
+  } catch (error) {
+    logger.error({ error: String(error) }, "Failed to create data directory");
+    throw error;
+  }
 }
 
 export async function getShortcutsList() {
@@ -96,6 +103,8 @@ export async function getShortcutsList() {
       return shortcuts;
     }
   }
+
+  logger.info("Refreshing shortcuts cache");
 
   await ensureDataDirectory();
   const timestamp = `Last Updated: <<<${new Date().toISOString()}>>>\n\n`;
@@ -126,7 +135,8 @@ export async function load<T = unknown>(path: string, defaultValue: T) {
 
     try {
       return JSON.parse(executions) as T;
-    } catch {
+    } catch (error) {
+      logger.error({ error: String(error), path }, "JSON file corrupted");
       throw new Error(`File at ${path} corrupted - please reset`);
     }
   }
@@ -169,6 +179,7 @@ export async function recordExecution({
   const executions = await load<ShortcutExecution[]>(path, []);
   executions.push(execution);
   await writeFile(path, JSON.stringify(executions));
+  logger.debug({ shortcut, success }, "Execution recorded");
 }
 
 export async function recordRecents({

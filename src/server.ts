@@ -32,7 +32,7 @@ server.addTool({
     return {
       content: [
         {
-          text: await runShortcut(log, args.name, args.input),
+          text: await runShortcut(args.name, args.input),
           type: "text",
         },
         {
@@ -151,8 +151,8 @@ server.addTool({
     title: "View Shortcut",
   },
   description: "Open a macOS Shortcut in the Shortcuts editor",
-  async execute(args, { log }) {
-    return String(await viewShortcut(log, args.name));
+  async execute(args) {
+    return String(await viewShortcut(args.name));
   },
   name: "view_shortcut",
   parameters: z.object({

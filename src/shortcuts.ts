@@ -1,5 +1,4 @@
 import { exec } from "child_process";
-import { SerializableValue } from "fastmcp";
 import { promisify } from "util";
 
 import {
@@ -7,14 +6,8 @@ import {
   isExecError,
   shellEscape,
 } from "./helpers.js";
+import { logger } from "./logger.js";
 import { recordExecution } from "./user-context.js";
-
-type Logger = {
-  debug: (message: string, data?: SerializableValue) => void;
-  error: (message: string, data?: SerializableValue) => void;
-  info: (message: string, data?: SerializableValue) => void;
-  warn: (message: string, data?: SerializableValue) => void;
-};
 
 const execAsync = promisify(exec);
 
@@ -23,6 +16,7 @@ export async function listShortcuts() {
     const { stdout } = await execAsync("shortcuts list --show-identifiers");
     return stdout.trim() || "No shortcuts found";
   } catch (error) {
+    logger.error({ error: String(error) }, "Failed to list shortcuts");
     throw new Error(
       isExecError(error)
         ? `Failed to list shortcuts: ${error.message}`
@@ -31,46 +25,29 @@ export async function listShortcuts() {
   }
 }
 
-export async function runShortcut(
-  log: Logger,
-  shortcut: string,
-  input?: string,
-) {
-  log.info("Running Shortcut started", { hasInput: !!input, name: shortcut });
-
+export async function runShortcut(shortcut: string, input?: string) {
   const escapedName = escapeAppleScriptString(shortcut);
   const script = input
     ? `tell application "Shortcuts Events" to run the shortcut named "${escapedName}" with input "${escapeAppleScriptString(input)}"`
     : `tell application "Shortcuts Events" to run the shortcut named "${escapedName}"`;
   const command = `osascript -e ${shellEscape(script)}`;
 
-  log.debug("AppleScript command constructed", {
-    commandLength: command.length,
-    escapedName,
-    originalName: shortcut,
-    script: script.substring(0, 100) + "...",
-  });
-
   const startTime = Date.now();
   try {
     const { stderr, stdout } = await execAsync(command);
     const duration = Date.now() - startTime;
 
-    log.info("Shortcut execution completed", {
-      duration,
-      hasStderr: !!stderr,
-      outputLength: stdout?.length ?? 0,
-      shortcut,
-    });
-
     if (stderr) {
-      log.warn("AppleScript stderr output", {
-        isPermissionRelated:
-          stderr.includes("permission") || stderr.includes("access"),
-        isTimeout: stderr.includes("timeout"),
-        shortcut,
-        stderr,
-      });
+      logger.warn(
+        {
+          isPermissionRelated:
+            stderr.includes("permission") || stderr.includes("access"),
+          isTimeout: stderr.includes("timeout"),
+          shortcut,
+          stderr,
+        },
+        "AppleScript stderr output",
+      );
     }
 
     const output = stdout ?? "Shortcut completed successfully";
@@ -79,22 +56,28 @@ export async function runShortcut(
     return output;
   } catch (error) {
     const duration = Date.now() - startTime;
-    log.error("Shortcut execution failed", {
-      command: command.substring(0, 50) + "...",
-      duration,
-      errorType: isExecError(error) ? "exec" : "other",
-      name: shortcut,
-    });
+    logger.error(
+      {
+        command: command.substring(0, 50) + "...",
+        duration,
+        errorType: isExecError(error) ? "exec" : "other",
+        shortcut,
+      },
+      "Shortcut execution failed",
+    );
 
     if (
       isExecError(error) &&
       (error.message.includes("1743") || error.message.includes("permission"))
     ) {
-      log.error("Permission denied - automation access required", {
-        name: shortcut,
-        solution:
-          "Grant automation permissions in System Preferences → Privacy & Security",
-      });
+      logger.error(
+        {
+          shortcut,
+          solution:
+            "Grant automation permissions in System Preferences → Privacy & Security",
+        },
+        "Permission denied - automation access required",
+      );
     }
 
     await recordExecution({
@@ -113,18 +96,21 @@ export async function runShortcut(
   }
 }
 
-export async function viewShortcut(log: Logger, name: string) {
-  log.info("Opening shortcut in editor", { name });
+export async function viewShortcut(name: string) {
+  logger.info({ name }, "Opening shortcut in editor");
 
   try {
     await execAsync(`shortcuts view ${shellEscape(name)}`);
-    log.info("Shortcut opened successfully", { name });
+    logger.info("Shortcut opened successfully", { name });
     return `Opened "${name}" in Shortcuts editor`;
   } catch (error) {
-    log.warn("CLI view command failed - possible Apple name resolution bug", {
-      name,
-      suggestion: "Try exact case-sensitive name from shortcuts list",
-    });
+    logger.warn(
+      {
+        name,
+        suggestion: "Try exact case-sensitive name from shortcuts list",
+      },
+      "CLI view command failed - possible Apple name resolution bug",
+    );
     throw error;
   }
 }
