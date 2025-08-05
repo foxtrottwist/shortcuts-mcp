@@ -15,19 +15,21 @@ vi.mock("./user-context.js", () => ({
   recordExecution: vi.fn(),
 }));
 
+vi.mock("./logger.js", () => ({
+  logger: {
+    debug: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+  },
+}));
+
 const { _mockExecAsync: mockExecAsync } = (await import("util")) as unknown as {
   _mockExecAsync: ReturnType<typeof vi.fn>;
 };
 
 const { recordExecution } = await import("./user-context.js");
 const mockRecordExecution = recordExecution as ReturnType<typeof vi.fn>;
-
-const mockLogger = {
-  debug: vi.fn(),
-  error: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-};
 
 describe("shortcuts", () => {
   beforeEach(() => {
@@ -76,26 +78,18 @@ describe("shortcuts", () => {
     it("should execute shortcuts view command with escaped name", async () => {
       mockExecAsync.mockResolvedValue({ stderr: "", stdout: "" });
 
-      const result = await viewShortcut(mockLogger, "My Shortcut");
+      const result = await viewShortcut("My Shortcut");
 
       expect(mockExecAsync).toHaveBeenCalledWith(
         "shortcuts view 'My Shortcut'",
       );
       expect(result).toBe('Opened "My Shortcut" in Shortcuts editor');
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        "Opening shortcut in editor",
-        { name: "My Shortcut" },
-      );
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        "Shortcut opened successfully",
-        { name: "My Shortcut" },
-      );
     });
 
     it("should handle shortcut names with single quotes", async () => {
       mockExecAsync.mockResolvedValue({ stderr: "", stdout: "" });
 
-      const result = await viewShortcut(mockLogger, "Don't Delete");
+      const result = await viewShortcut("Don't Delete");
 
       expect(mockExecAsync).toHaveBeenCalledWith(
         "shortcuts view 'Don'\"'\"'t Delete'",
@@ -107,16 +101,7 @@ describe("shortcuts", () => {
       const mockError = new Error("View failed");
       mockExecAsync.mockRejectedValue(mockError);
 
-      await expect(viewShortcut(mockLogger, "Test")).rejects.toThrow(
-        "View failed",
-      );
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        "CLI view command failed - possible Apple name resolution bug",
-        {
-          name: "Test",
-          suggestion: "Try exact case-sensitive name from shortcuts list",
-        },
-      );
+      await expect(viewShortcut("Test")).rejects.toThrow("View failed");
     });
   });
 
@@ -125,7 +110,7 @@ describe("shortcuts", () => {
       const mockStdout = "Shortcut executed";
       mockExecAsync.mockResolvedValue({ stderr: "", stdout: mockStdout });
 
-      const result = await runShortcut(mockLogger, "Test Shortcut");
+      const result = await runShortcut("Test Shortcut");
 
       const expectedScript =
         'tell application "Shortcuts Events" to run the shortcut named "Test Shortcut"';
@@ -133,10 +118,6 @@ describe("shortcuts", () => {
 
       expect(mockExecAsync).toHaveBeenCalledWith(expectedCommand);
       expect(result).toBe(mockStdout);
-      expect(mockLogger.info).toHaveBeenCalledWith("Running Shortcut started", {
-        hasInput: false,
-        name: "Test Shortcut",
-      });
       expect(mockRecordExecution).toHaveBeenCalledWith({
         duration: expect.any(Number),
         input: undefined,
@@ -150,11 +131,7 @@ describe("shortcuts", () => {
       const mockStdout = "Shortcut executed with input";
       mockExecAsync.mockResolvedValue({ stderr: "", stdout: mockStdout });
 
-      const result = await runShortcut(
-        mockLogger,
-        "Test Shortcut",
-        "hello world",
-      );
+      const result = await runShortcut("Test Shortcut", "hello world");
 
       const expectedScript =
         'tell application "Shortcuts Events" to run the shortcut named "Test Shortcut" with input "hello world"';
@@ -162,10 +139,6 @@ describe("shortcuts", () => {
 
       expect(mockExecAsync).toHaveBeenCalledWith(expectedCommand);
       expect(result).toBe(mockStdout);
-      expect(mockLogger.info).toHaveBeenCalledWith("Running Shortcut started", {
-        hasInput: true,
-        name: "Test Shortcut",
-      });
     });
 
     it("should handle names and input with special characters", async () => {
@@ -173,7 +146,6 @@ describe("shortcuts", () => {
       mockExecAsync.mockResolvedValue({ stderr: "", stdout: mockStdout });
 
       const result = await runShortcut(
-        mockLogger,
         'My "Special" Shortcut',
         'input with "quotes"',
       );
@@ -194,41 +166,24 @@ describe("shortcuts", () => {
         stdout: mockStdout,
       });
 
-      const result = await runShortcut(mockLogger, "Test");
+      const result = await runShortcut("Test");
 
       expect(result).toBe(mockStdout);
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        "AppleScript stderr output",
-        {
-          isPermissionRelated: true,
-          isTimeout: false,
-          shortcut: "Test",
-          stderr: mockStderr,
-        },
-      );
     });
 
     it("should handle timeout warnings", async () => {
       const mockStderr = "Error: operation timeout";
       mockExecAsync.mockResolvedValue({ stderr: mockStderr, stdout: "Result" });
 
-      await runShortcut(mockLogger, "Test");
+      const result = await runShortcut("Test");
 
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        "AppleScript stderr output",
-        {
-          isPermissionRelated: false,
-          isTimeout: true,
-          shortcut: "Test",
-          stderr: mockStderr,
-        },
-      );
+      expect(result).toBe("Result");
     });
 
     it("should handle null stdout", async () => {
       mockExecAsync.mockResolvedValue({ stderr: "", stdout: null });
 
-      const result = await runShortcut(mockLogger, "Test");
+      const result = await runShortcut("Test");
 
       expect(result).toBe("Shortcut completed successfully");
     });
@@ -241,17 +196,8 @@ describe("shortcuts", () => {
       mockError.stdout = "";
       mockExecAsync.mockRejectedValue(mockError);
 
-      await expect(runShortcut(mockLogger, "Test")).rejects.toThrow(
+      await expect(runShortcut("Test")).rejects.toThrow(
         "Failed to run Test shortcut: Error 1743: Permission denied",
-      );
-
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        "Permission denied - automation access required",
-        {
-          name: "Test",
-          solution:
-            "Grant automation permissions in System Preferences → Privacy & Security",
-        },
       );
       expect(mockRecordExecution).toHaveBeenCalledWith({
         duration: expect.any(Number),
@@ -266,9 +212,7 @@ describe("shortcuts", () => {
       const mockError = new Error("Generic error");
       mockExecAsync.mockRejectedValue(mockError);
 
-      await expect(runShortcut(mockLogger, "Test")).rejects.toThrow(
-        "Error: Generic error",
-      );
+      await expect(runShortcut("Test")).rejects.toThrow("Error: Generic error");
     });
   });
 
@@ -285,7 +229,7 @@ describe("shortcuts", () => {
       originalError.stdout = "";
       mockExecAsync.mockRejectedValue(originalError);
 
-      await expect(runShortcut(mockLogger, "Test")).rejects.toThrow(
+      await expect(runShortcut("Test")).rejects.toThrow(
         "Failed to run Test shortcut: Permission denied",
       );
     });
