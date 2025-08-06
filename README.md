@@ -192,7 +192,7 @@ When your shortcut changes system settings or performs actions, output configura
 
 Claude receives action confirmation and can tell the user the changes completed successfully.
 
-**Key question:** *“Does the user expect Claude to tell them specific information from this shortcut?”*
+**Key question:** _“Does the user expect Claude to tell them specific information from this shortcut?”_
 
 - **Yes (Data Retrieval)** → Add Text action (conversion) + Stop and output action (delivery)
 - **No (System Action)** → Output configuration optional, action confirmation is sufficient
@@ -255,14 +255,18 @@ While all shortcuts work, some integrate better with Claude workflows:
 ### MCP Integration
 
 1. **Tools**:
+
 - `run_shortcut` - AppleScript execution with comprehensive logging
 - `user_context` - Read and update local preferences and usage tracking
 - `view_shortcut` - CLI editor opening with fallback guidance
+
 1. **Resources** (automatically embedded):
+
 - `shortcuts://available` - Current shortcuts list
 - `execution://runs/recent` - Recent execution history (local only)
 - `context://system/current` - System state for time-based suggestions
 - `context://user/profile` - Local user preferences and patterns
+
 1. **Enhanced Prompts**: AI-powered shortcut recommendation with name resolution strategies
 1. **Local Data Storage**: Performance tracking, permission detection, debugging information (stays on your computer)
 
@@ -416,6 +420,6 @@ MIT License - see <LICENSE> for details.
 - Email: [hello@foxtrottwist.com](mailto:hello@foxtrottwist.com)
 - MCP Projects: [lawrencehorne.com/mcp](https://lawrencehorne.com/mcp)
 
------
+---
 
-*Part of the [Model Context Protocol](https://modelcontextprotocol.io) ecosystem - enabling AI assistants to interact with external tools and data sources.*
+_Part of the [Model Context Protocol](https://modelcontextprotocol.io) ecosystem - enabling AI assistants to interact with external tools and data sources._
