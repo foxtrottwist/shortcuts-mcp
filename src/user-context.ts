@@ -1,7 +1,7 @@
 import { deepmerge } from "@fastify/deepmerge";
 import { mkdir, readFile, writeFile } from "fs/promises";
 
-import { isDirectory, isFile } from "./helpers.js";
+import { isDirectory, isFile, isOlderThan24Hrs } from "./helpers.js";
 import { logger } from "./logger.js";
 import { listShortcuts } from "./shortcuts.js";
 
@@ -121,12 +121,6 @@ export function getSystemState() {
     timestamp: new Date().toISOString(),
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   };
-}
-
-export function isOlderThan24Hrs(timestamp?: string) {
-  if (!timestamp) return true;
-  const ts = new Date(timestamp.trim()).getTime();
-  return !isNaN(ts) && Date.now() - ts > 24 * 60 * 60 * 1000;
 }
 
 export async function load<T = unknown>(path: string, defaultValue: T) {

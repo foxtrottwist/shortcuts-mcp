@@ -24,36 +24,51 @@ server.addTool({
   description:
     "Execute a macOS Shortcut by name with optional input. Use when users want to run any shortcut including interactive workflows with file pickers, dialogs, location services, and system permissions. All shortcut types are supported through AppleScript integration.",
   async execute(args, { log }) {
+    const { input, name, resources = [] } = args;
     log.info("Tool execution started", {
-      hasInput: !!args.input,
-      shortcutName: args.name,
+      hasInput: !!input,
+      resourcesRequested: resources,
+      shortcutName: name,
       tool: "run_shortcut",
     });
 
-    return {
+    const result: Record<"content", Content[]> = {
       content: [
         {
           text: await runShortcut(args.name, args.input),
           type: "text",
         },
         {
-          resource: await server.embedded("shortcuts://available"),
-          type: "resource",
-        },
-        {
-          resource: await server.embedded("shortcuts://runs/recent"),
-          type: "resource",
-        },
-        {
           resource: await server.embedded("context://system/current"),
-          type: "resource",
-        },
-        {
-          resource: await server.embedded("context://user/profile"),
           type: "resource",
         },
       ],
     };
+
+    for (const resource of resources) {
+      switch (resource) {
+        case "profile":
+          result.content.push({
+            resource: await server.embedded("context://user/profile"),
+            type: "resource",
+          });
+          break;
+        case "recents":
+          result.content.push({
+            resource: await server.embedded("shortcuts://runs/recent"),
+            type: "resource",
+          });
+          break;
+        case "shortcuts":
+          result.content.push({
+            resource: await server.embedded("shortcuts://available"),
+            type: "resource",
+          });
+          break;
+      }
+    }
+
+    return result;
   },
   name: "run_shortcut",
   parameters: z.object({
@@ -62,6 +77,12 @@ server.addTool({
       .optional()
       .describe("Optional input to pass to the shortcut"),
     name: z.string().describe("The name of the Shortcut to run"),
+    resources: z
+      .array(z.enum(["shortcuts", "profile", "recents"]))
+      .optional()
+      .describe(
+        "Contextual resources to include. Consider time elapsed and conversation needs: 'shortcuts' for discovery/validation, 'recents' for troubleshooting/patterns, 'profile' for personalized recommendations.",
+      ),
   }),
 });
 

@@ -56,6 +56,20 @@ export async function isFile(path: string) {
     .catch(() => false);
 }
 
+export function isOlderThan24Hrs(timestamp?: Date | string) {
+  if (!timestamp) return true;
+
+  let ts: number;
+
+  if (timestamp instanceof Date) {
+    ts = timestamp.getTime();
+  } else {
+    ts = new Date(timestamp.trim()).getTime();
+  }
+
+  return !isNaN(ts) && Date.now() - ts > 24 * 60 * 60 * 1000;
+}
+
 /**
  * Escapes a string for safe use in shell commands by wrapping in single quotes.
  *
