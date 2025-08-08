@@ -108,7 +108,7 @@ server.addTool({
         });
 
         if (!resources.includes("profile")) {
-          resources.content.push({
+          result.content.push({
             text: JSON.stringify(profile),
             type: "text",
           });
