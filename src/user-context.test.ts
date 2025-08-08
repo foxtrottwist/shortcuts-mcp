@@ -4,7 +4,6 @@ import {
   ensureDataDirectory,
   getShortcutsList,
   getSystemState,
-  isOlderThan24Hrs,
   load,
   loadRecents,
   loadUserProfile,
@@ -23,6 +22,7 @@ vi.mock("fs/promises", () => ({
 vi.mock("./helpers.js", () => ({
   isDirectory: vi.fn(),
   isFile: vi.fn(),
+  isOlderThan24Hrs: vi.fn(),
 }));
 
 vi.mock("./shortcuts.js", () => ({
@@ -30,13 +30,14 @@ vi.mock("./shortcuts.js", () => ({
 }));
 
 const { mkdir, readFile, writeFile } = await import("fs/promises");
-const { isDirectory, isFile } = await import("./helpers.js");
+const { isDirectory, isFile, isOlderThan24Hrs } = await import("./helpers.js");
 const { listShortcuts } = await import("./shortcuts.js");
 
 const mockMkdir = mkdir as ReturnType<typeof vi.fn>;
 const mockReadFile = readFile as ReturnType<typeof vi.fn>;
 const mockWriteFile = writeFile as ReturnType<typeof vi.fn>;
 const mockIsDirectory = isDirectory as ReturnType<typeof vi.fn>;
+const mockIsOlderThan24Hrs = isOlderThan24Hrs as ReturnType<typeof vi.fn>;
 const mockIsFile = isFile as ReturnType<typeof vi.fn>;
 const mockListShortcuts = listShortcuts as ReturnType<typeof vi.fn>;
 
@@ -109,6 +110,7 @@ describe("user-context", () => {
       mockReadFile.mockResolvedValue(oldCachedData);
       mockListShortcuts.mockResolvedValue(newShortcuts);
       mockIsDirectory.mockResolvedValue(false);
+      mockIsOlderThan24Hrs.mockReturnValue(true);
       mockMkdir.mockResolvedValue(undefined);
       mockWriteFile.mockResolvedValue(undefined);
 
@@ -151,26 +153,6 @@ describe("user-context", () => {
       });
       // Verify it's using the mocked time
       expect(state.timestamp).toBe("2025-08-04T12:00:00.000Z");
-    });
-  });
-
-  describe("isOlderThan24Hrs", () => {
-    it("should return true if timestamp is older than 24 hours", () => {
-      const oldTimestamp = "2025-08-02T12:00:00Z";
-      expect(isOlderThan24Hrs(oldTimestamp)).toBe(true);
-    });
-
-    it("should return false if timestamp is less than 24 hours old", () => {
-      const recentTimestamp = "2025-08-04T10:00:00Z";
-      expect(isOlderThan24Hrs(recentTimestamp)).toBe(false);
-    });
-
-    it("should return true for undefined timestamp", () => {
-      expect(isOlderThan24Hrs(undefined)).toBe(true);
-    });
-
-    it("should return false for invalid timestamp", () => {
-      expect(isOlderThan24Hrs("invalid-date")).toBe(false);
     });
   });
 

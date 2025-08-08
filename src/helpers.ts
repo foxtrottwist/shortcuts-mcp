@@ -56,6 +56,20 @@ export async function isFile(path: string) {
     .catch(() => false);
 }
 
+/**
+ * Checks if a timestamp is older than 24 hours from the current time.
+ *
+ * @param timestamp - The timestamp to check (Date object or ISO string)
+ * @returns True if timestamp is older than 24 hours, false otherwise
+ *
+ * @example
+ * ```typescript
+ * isOlderThan24Hrs("2025-08-01T12:00:00Z");     // true (if current time is Aug 3+)
+ * isOlderThan24Hrs(new Date("2025-08-08T10:00:00Z")); // false (if current time is Aug 8 11am)
+ * isOlderThan24Hrs(undefined);                   // true (no timestamp means needs refresh)
+ * isOlderThan24Hrs("invalid-date");              // false (invalid dates are not old)
+ * ```
+ */
 export function isOlderThan24Hrs(timestamp?: Date | string) {
   if (!timestamp) return true;
 
@@ -67,7 +81,7 @@ export function isOlderThan24Hrs(timestamp?: Date | string) {
     ts = new Date(timestamp.trim()).getTime();
   }
 
-  return !isNaN(ts) && Date.now() - ts > 24 * 60 * 60 * 1000;
+  return !isNaN(ts) && new Date().getTime() - ts > 24 * 60 * 60 * 1000;
 }
 
 /**
