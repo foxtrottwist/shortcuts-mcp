@@ -44,7 +44,7 @@ export type ShortcutExecution = {
 };
 
 export type ShortCutStatistics = Partial<{
-  generatedAt: string; // ISO timestamp for cache validation
+  generatedAt: string;
   // eslint-disable-next-line perfectionist/sort-object-types
   executions: {
     failures: number;

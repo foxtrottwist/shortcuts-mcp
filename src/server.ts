@@ -7,7 +7,6 @@ import { runShortcut, viewShortcut } from "./shortcuts.js";
 import {
   getShortcutsList,
   getSystemState,
-  loadStatistics,
   loadUserProfile,
   saveUserProfile,
 } from "./user-context.js";
@@ -206,8 +205,9 @@ server.addResource({
   description:
     "AI-generated statistics from execution history including success rates, timing analysis, and per-shortcut performance data. Refreshed every 24 hours via sampling analysis.",
   async load() {
+    const session = server.sessions[0];
     return {
-      text: JSON.stringify(await loadStatistics()),
+      text: JSON.stringify(await requestStatistics(session)),
     };
   },
   mimeType: "application/json",
