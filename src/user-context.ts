@@ -1,5 +1,6 @@
-import { deepmerge } from "@fastify/deepmerge";
-import { mkdir, readFile, writeFile } from "fs/promises";
+import deepmerge from "@fastify/deepmerge";
+import { mkdir, readdir, readFile, writeFile } from "fs/promises";
+import path from "path";
 
 import { isDirectory, isFile, isOlderThan24Hrs } from "./helpers.js";
 import { logger } from "./logger.js";
@@ -8,25 +9,23 @@ import { listShortcuts } from "./shortcuts.js";
 /*
 ~/.shortcuts-mcp/
 ├── user-profile.json          # User preferences and context settings
+├── statistics.json        # 30-day computed statistics
 └── executions/
     ├── 2025-08-01.json        # Daily execution logs (raw data)
     ├── 2025-07-31.json        # Previous daily logs
-    ├── recent.json            # Last 50 executions (quick access)
-    └── statistics.json        # 30-day computed statistics
 
 # File Contents:
 # user-profile.json    - Manual preferences, current projects, focus areas
 # daily logs          - Individual execution records with timestamps
-# recent.json         - Cache of most recent executions  
 # statistics.json     - Computed stats: totals, timing, per-shortcut data
  */
 
+const DATED_FILE = /^\d{4}-\d{2}-\d{2}\.json$/;
 const DATA_DIRECTORY = `${process.env.HOME}/.shortcuts-mcp/`;
 const USER_PROFILE = `${DATA_DIRECTORY}user-profile.json`;
 const EXECUTIONS = `${DATA_DIRECTORY}executions/`;
-const RECENT_EXECUTIONS = `${EXECUTIONS}recents.json`;
 const SHORTCUTS_CACHE = `${DATA_DIRECTORY}shortcuts-cache.txt`;
-const STATISTICS = `${EXECUTIONS}statistics.json`;
+const STATISTICS = `${DATA_DIRECTORY}statistics.json`;
 
 export type RecentShortcutExecution = {
   duration: number;
@@ -45,6 +44,8 @@ export type ShortcutExecution = {
 };
 
 export type ShortCutStatistics = Partial<{
+  generatedAt: string; // ISO timestamp for cache validation
+  // eslint-disable-next-line perfectionist/sort-object-types
   executions: {
     failures: number;
     successes: number;
@@ -78,16 +79,17 @@ export type UserProfile = {
 };
 
 export async function ensureDataDirectory() {
-  if (await isDirectory(DATA_DIRECTORY)) {
-    return;
-  }
-
   try {
     await mkdir(DATA_DIRECTORY, { recursive: true });
     await mkdir(EXECUTIONS, { recursive: true });
-    await writeFile(RECENT_EXECUTIONS, JSON.stringify([]));
-    await writeFile(STATISTICS, JSON.stringify({}));
-    await writeFile(USER_PROFILE, JSON.stringify({}));
+
+    if (!(await isFile(STATISTICS))) {
+      await writeFile(STATISTICS, "{}");
+    }
+    if (!(await isFile(USER_PROFILE))) {
+      await writeFile(USER_PROFILE, "{}");
+    }
+
     logger.info("Data directory initialized");
   } catch (error) {
     logger.error({ error: String(error) }, "Failed to create data directory");
@@ -96,11 +98,12 @@ export async function ensureDataDirectory() {
 }
 
 export async function getShortcutsList() {
+  const timestampPattern = /^Last Updated: <<<(.*?)>>>\n\n/;
   if (await isFile(SHORTCUTS_CACHE)) {
     const shortcuts = await readFile(SHORTCUTS_CACHE, "utf8");
-    const timestamp = shortcuts.match(/<<<(.*?)>>>/)?.[1];
+    const timestamp = shortcuts.match(timestampPattern)?.[1];
     if (!isOlderThan24Hrs(timestamp)) {
-      return shortcuts;
+      return shortcuts.replace(timestampPattern, "");
     }
   }
 
@@ -125,10 +128,10 @@ export function getSystemState() {
 
 export async function load<T = unknown>(path: string, defaultValue: T) {
   if (await isFile(path)) {
-    const executions = await readFile(path, "utf8");
+    const file = await readFile(path, "utf8");
 
     try {
-      return JSON.parse(executions) as T;
+      return JSON.parse(file) as T;
     } catch (error) {
       logger.error({ error: String(error), path }, "JSON file corrupted");
       throw new Error(`File at ${path} corrupted - please reset`);
@@ -139,8 +142,42 @@ export async function load<T = unknown>(path: string, defaultValue: T) {
   return defaultValue;
 }
 
-export async function loadRecents() {
-  return await load<RecentShortcutExecution[]>(RECENT_EXECUTIONS, []);
+export async function loadExecutions() {
+  if (!(await isDirectory(EXECUTIONS))) {
+    await ensureDataDirectory();
+    return { days: 0, executions: [] };
+  }
+
+  const files = await readdir(EXECUTIONS);
+  const jsonFiles = files
+    .filter((f) => DATED_FILE.test(f))
+    .sort((a, b) => b.localeCompare(a));
+
+  const executions: ShortcutExecution[] = [];
+
+  for (const file of jsonFiles) {
+    try {
+      const content = await readFile(path.join(EXECUTIONS, file), "utf8");
+      const parsed = JSON.parse(content);
+
+      if (Array.isArray(parsed)) {
+        executions.push(...parsed);
+      } else {
+        logger.warn({ file }, "Execution file is not an array, skipping");
+      }
+    } catch (err) {
+      logger.warn(
+        { error: String(err), file },
+        "Skipping unreadable execution file",
+      );
+    }
+  }
+
+  return { days: jsonFiles.length, executions };
+}
+
+export async function loadStatistics() {
+  return await load<ShortCutStatistics>(STATISTICS, {});
 }
 
 export async function loadUserProfile() {
@@ -159,8 +196,6 @@ export async function recordExecution({
   const filename = `${dateString}.json`;
   const path = `${EXECUTIONS}${filename}`;
 
-  await recordRecents({ duration, shortcut, success, timestamp });
-
   const execution: ShortcutExecution = {
     duration,
     input,
@@ -174,25 +209,6 @@ export async function recordExecution({
   executions.push(execution);
   await writeFile(path, JSON.stringify(executions));
   logger.debug({ shortcut, success }, "Execution recorded");
-}
-
-export async function recordRecents({
-  duration = 0,
-  shortcut = "",
-  success = false,
-  timestamp = "",
-}) {
-  const recent: RecentShortcutExecution = {
-    duration,
-    shortcut,
-    success,
-    timestamp,
-  };
-
-  const recents = await load<RecentShortcutExecution[]>(RECENT_EXECUTIONS, []);
-  recents.push(recent);
-  const trimmedRecents = recents.slice(-25);
-  await writeFile(RECENT_EXECUTIONS, JSON.stringify(trimmedRecents));
 }
 
 export async function saveStatistics(data: ShortCutStatistics) {

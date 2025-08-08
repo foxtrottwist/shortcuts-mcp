@@ -1,11 +1,13 @@
 import { Content, FastMCP } from "fastmcp";
 import { z } from "zod";
 
+import { logger } from "./logger.js";
+import { requestStatistics } from "./sampling.js";
 import { runShortcut, viewShortcut } from "./shortcuts.js";
 import {
   getShortcutsList,
   getSystemState,
-  loadRecents,
+  loadStatistics,
   loadUserProfile,
   saveUserProfile,
 } from "./user-context.js";
@@ -80,15 +82,15 @@ server.addTool({
             type: "resource",
           });
           break;
-        case "recents":
-          result.content.push({
-            resource: await server.embedded("shortcuts://runs/recent"),
-            type: "resource",
-          });
-          break;
         case "shortcuts":
           result.content.push({
             resource: await server.embedded("shortcuts://available"),
+            type: "resource",
+          });
+          break;
+        case "statistics":
+          result.content.push({
+            resource: await server.embedded("statistics://generated"),
             type: "resource",
           });
           break;
@@ -137,7 +139,7 @@ server.addTool({
       })
       .optional(),
     resources: z
-      .array(z.enum(["profile", "recents", "shortcuts", "statistics"]))
+      .array(z.enum(["profile", "shortcuts", "statistics"]))
       .optional()
       .describe(
         "Contextual resources to include. Consider time elapsed and conversation needs: 'shortcuts' for discovery/validation, 'recents' for troubleshooting/patterns, 'profile' for personalized recommendations.",
@@ -175,19 +177,6 @@ server.addResource({
   uri: "shortcuts://available",
 });
 
-server.addResource({
-  description:
-    "Last 25 shortcut executions with timestamps, success/failure status, duration, and error details. Used for analyzing usage patterns, identifying failed shortcuts, and calculating time-based statistics.",
-  async load() {
-    return {
-      text: JSON.stringify(await loadRecents()),
-    };
-  },
-  mimeType: "application/json",
-  name: "Recent execution history",
-  uri: "shortcuts://runs/recent",
-});
-
 server.addResourceTemplate({
   arguments: [{ description: "Shortcut name", name: "name", required: true }],
   description:
@@ -211,6 +200,19 @@ server.addResource({
   mimeType: "application/json",
   name: "Live system state",
   uri: "context://system/current",
+});
+
+server.addResource({
+  description:
+    "AI-generated statistics from execution history including success rates, timing analysis, and per-shortcut performance data. Refreshed every 24 hours via sampling analysis.",
+  async load() {
+    return {
+      text: JSON.stringify(await loadStatistics()),
+    };
+  },
+  mimeType: "application/json",
+  name: "Execution statistics & insights",
+  uri: "statistics://generated",
 });
 
 server.addResource({
@@ -265,4 +267,9 @@ Be specific about which shortcut to use and how to use it effectively.`;
 
 server.start({
   transportType: "stdio",
+});
+
+server.on("connect", async (event) => {
+  const session = event.session;
+  await requestStatistics(session).catch(logger.error);
 });

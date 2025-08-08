@@ -5,10 +5,8 @@ import {
   getShortcutsList,
   getSystemState,
   load,
-  loadRecents,
   loadUserProfile,
   recordExecution,
-  recordRecents,
   saveStatistics,
   saveUserProfile,
 } from "./user-context.js";
@@ -54,18 +52,24 @@ describe("user-context", () => {
 
   describe("ensureDataDirectory", () => {
     it("should not create directories if they already exist", async () => {
-      mockIsDirectory.mockResolvedValue(true);
+      mockIsFile.mockResolvedValue(true);
+      mockMkdir.mockResolvedValue(undefined);
 
       await ensureDataDirectory();
 
-      expect(mockIsDirectory).toHaveBeenCalledWith(
+      expect(mockMkdir).toHaveBeenCalledWith(
         `${process.env.HOME}/.shortcuts-mcp/`,
+        { recursive: true },
       );
-      expect(mockMkdir).not.toHaveBeenCalled();
+      expect(mockMkdir).toHaveBeenCalledWith(
+        `${process.env.HOME}/.shortcuts-mcp/executions/`,
+        { recursive: true },
+      );
+      expect(mockWriteFile).not.toHaveBeenCalled();
     });
 
     it("should create directories if they don't exist", async () => {
-      mockIsDirectory.mockResolvedValue(false);
+      mockIsFile.mockResolvedValue(false);
       mockMkdir.mockResolvedValue(undefined);
       mockWriteFile.mockResolvedValue(undefined);
 
@@ -80,7 +84,7 @@ describe("user-context", () => {
         { recursive: true },
       );
       expect(mockWriteFile).toHaveBeenCalledWith(
-        `${process.env.HOME}/.shortcuts-mcp/executions/statistics.json`,
+        `${process.env.HOME}/.shortcuts-mcp/statistics.json`,
         JSON.stringify({}),
       );
       expect(mockWriteFile).toHaveBeenCalledWith(
@@ -93,12 +97,13 @@ describe("user-context", () => {
   describe("getShortcutsList", () => {
     it("should return cached shortcuts if less than 24 hours old", async () => {
       const cachedData = `Last Updated: <<<2025-08-04T10:00:00Z>>>\n\nShortcut 1\nShortcut 2`;
+      const expectedShortcuts = `Shortcut 1\nShortcut 2`;
       mockIsFile.mockResolvedValue(true);
       mockReadFile.mockResolvedValue(cachedData);
 
       const result = await getShortcutsList();
 
-      expect(result).toBe(cachedData);
+      expect(result).toBe(expectedShortcuts);
       expect(mockListShortcuts).not.toHaveBeenCalled();
     });
 
@@ -191,36 +196,6 @@ describe("user-context", () => {
     });
   });
 
-  describe("loadRecents", () => {
-    it("should load recent executions", async () => {
-      const recents = [
-        {
-          duration: 100,
-          shortcut: "Test",
-          success: true,
-          timestamp: "2025-08-04T12:00:00Z",
-        },
-      ];
-      mockIsFile.mockResolvedValue(true);
-      mockReadFile.mockResolvedValue(JSON.stringify(recents));
-
-      const result = await loadRecents();
-
-      expect(result).toEqual(recents);
-    });
-
-    it("should return empty array if file doesn't exist", async () => {
-      mockIsFile.mockResolvedValue(false);
-      mockIsDirectory.mockResolvedValue(false);
-      mockMkdir.mockResolvedValue(undefined);
-      mockWriteFile.mockResolvedValue(undefined);
-
-      const result = await loadRecents();
-
-      expect(result).toEqual([]);
-    });
-  });
-
   describe("loadUserProfile", () => {
     it("should load user profile", async () => {
       const profile = {
@@ -266,12 +241,6 @@ describe("user-context", () => {
         `${process.env.HOME}/.shortcuts-mcp/executions/2025-08-04.json`,
         expect.stringContaining("Test Shortcut"),
       );
-
-      // Should update recents
-      expect(mockWriteFile).toHaveBeenCalledWith(
-        expect.stringContaining("recents.json"),
-        expect.any(String),
-      );
     });
 
     it("should append to existing daily file", async () => {
@@ -300,36 +269,6 @@ describe("user-context", () => {
         shortcut: "New Shortcut",
         success: false,
       });
-    });
-  });
-
-  describe("recordRecents", () => {
-    it("should add to recents and trim to last 25", async () => {
-      const existingRecents = Array(30)
-        .fill(null)
-        .map((_, i) => ({
-          duration: i,
-          shortcut: `Shortcut ${i}`,
-          success: true,
-          timestamp: `2025-08-04T${i}:00:00Z`,
-        }));
-
-      mockIsFile.mockResolvedValue(true);
-      mockReadFile.mockResolvedValue(JSON.stringify(existingRecents));
-      mockWriteFile.mockResolvedValue(undefined);
-
-      await recordRecents({
-        duration: 100,
-        shortcut: "New Recent",
-        success: true,
-        timestamp: "2025-08-04T12:00:00Z",
-      });
-
-      const writeCall = mockWriteFile.mock.calls[0];
-      const writtenData = JSON.parse(writeCall[1]);
-
-      expect(writtenData).toHaveLength(25);
-      expect(writtenData[24]).toMatchObject({ shortcut: "New Recent" });
     });
   });
 

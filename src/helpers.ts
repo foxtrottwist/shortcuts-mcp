@@ -108,3 +108,11 @@ export function isOlderThan24Hrs(timestamp?: Date | string) {
 export function shellEscape(str: string) {
   return `'${str.replace(/'/g, "'\"'\"'")}'`;
 }
+
+export function tryJSONParse(s: string, handleError: (e: unknown) => void) {
+  try {
+    return JSON.parse(s);
+  } catch (e) {
+    handleError(e);
+  }
+}

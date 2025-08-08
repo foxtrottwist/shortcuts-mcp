@@ -1,7 +1,13 @@
 import { FastMCPSession } from "fastmcp";
 
+import { isOlderThan24Hrs, tryJSONParse } from "./helpers.js";
 import { logger } from "./logger.js";
-import { ShortcutExecution } from "./user-context.js";
+import {
+  loadExecutions,
+  loadStatistics,
+  saveStatistics,
+  ShortCutStatistics,
+} from "./user-context.js";
 
 type ContextMap = { CONTEXT_DECISION: ExecutionContext; STATISTICS: unknown[] };
 
@@ -12,7 +18,7 @@ type ExecutionContext = {
   shortcut: string;
   success: boolean;
   timestamp: string;
-  userGoal?: string; // From conversation context
+  userGoal?: string;
 };
 
 type MessageTemplates = { [K in SamplingTask]: (arg: ContextMap[K]) => string };
@@ -45,13 +51,21 @@ Return: JSON with resources to include.`,
     "max": number
   },
   "per-shortcut": {
-    "shortcut-name": {
-      "count": number,
-      "success-rate": number,
-      "avg-duration": number
+    "Get The Weather": {
+      "count": 4,
+      "success-rate": 1.0,
+      "avg-duration": 1387
+    },
+    "Say it": {
+      "count": 7,
+      "success-rate": 1.0,
+      "avg-duration": 28092
     }
+    // ... stats for each unique shortcut name
   }
 }
+
+Calculate statistics for ALL shortcuts found in the data. Use actual shortcut names as keys in per-shortcut object.
 
 Raw execution data: ${JSON.stringify(executionData)}`,
 };
@@ -111,9 +125,25 @@ export async function requestContextDecision(
   return buildRequest(session, "CONTEXT_DECISION", context);
 }
 
-export async function requestStatitics(
-  session: FastMCPSession,
-  data: ShortcutExecution[],
-) {
-  return buildRequest(session, "STATISTICS", data);
+export async function requestStatistics(session: FastMCPSession) {
+  const stats = await loadStatistics();
+  if (!isOlderThan24Hrs(stats?.generatedAt)) {
+    return;
+  }
+
+  const { days, executions } = await loadExecutions();
+
+  if (days >= 3 && executions.length >= 20) {
+    const res = await buildRequest(session, "STATISTICS", executions).catch(
+      logger.error,
+    );
+    if (res && res.content.type === "text") {
+      const stats: ShortCutStatistics = tryJSONParse(
+        res.content.text,
+        () => {},
+      );
+      stats.generatedAt = new Date().toISOString();
+      await saveStatistics(stats);
+    }
+  }
 }
