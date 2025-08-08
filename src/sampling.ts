@@ -1,6 +1,7 @@
 import { FastMCPSession } from "fastmcp";
 
 import { logger } from "./logger.js";
+import { ShortcutExecution } from "./user-context.js";
 
 type ContextMap = { CONTEXT_DECISION: ExecutionContext; STATISTICS: unknown[] };
 
@@ -96,10 +97,23 @@ export async function buildRequest<T extends SamplingTask>(
       systemPrompt: SAMPLING_SYSTEM_PROMPTS[task],
       ...SAMPLING_OPTIONS[task],
     })
-    .then((r) => r)
     .catch((error) => {
       const errorMessage = `Sampling failed for task ${task}: ${error.message || String(error)}`;
       logger.error(errorMessage, { error, task });
       throw new Error(errorMessage);
     });
+}
+
+export async function requestContextDecision(
+  session: FastMCPSession,
+  context: ExecutionContext,
+) {
+  return buildRequest(session, "CONTEXT_DECISION", context);
+}
+
+export async function requestStatitics(
+  session: FastMCPSession,
+  data: ShortcutExecution[],
+) {
+  return buildRequest(session, "STATISTICS", data);
 }
