@@ -1,6 +1,7 @@
 import { Content, FastMCP } from "fastmcp";
 import { z } from "zod";
 
+import { getVersion } from "./helpers.js";
 import { logger } from "./logger.js";
 import { requestStatistics } from "./sampling.js";
 import { runShortcut, viewShortcut } from "./shortcuts.js";
@@ -13,7 +14,7 @@ import {
 
 const server = new FastMCP({
   name: "Shortcuts",
-  version: "2.0.0 ",
+  version: getVersion(),
 });
 
 server.addTool({

@@ -1,5 +1,8 @@
 import { ExecException } from "child_process";
+import { readFileSync } from "fs";
 import { stat } from "fs/promises";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 
 /**
  * Escapes a string for safe use in AppleScript by doubling backslashes and escaping quotes.
@@ -15,6 +18,17 @@ import { stat } from "fs/promises";
  */
 export function escapeAppleScriptString(str: string): string {
   return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+export function getVersion() {
+  try {
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+    const packagePath = join(__dirname, "../package.json");
+    const packageJson = JSON.parse(readFileSync(packagePath, "utf8"));
+    return packageJson.version;
+  } catch {
+    return "unknown";
+  }
 }
 /**
  * Checks if a path is a directory.
@@ -111,16 +125,16 @@ export function shellEscape(str: string) {
 
 /**
  * Safely attempts to parse a JSON string with error handling.
- * 
+ *
  * @param s - The string to parse as JSON
  * @param handleError - Callback function to handle parse errors
  * @returns Parsed JSON object if successful, undefined if parsing fails
- * 
+ *
  * @example
  * ```typescript
  * const data = tryJSONParse('{"key": "value"}', (e) => console.error(e));
  * // Returns: { key: "value" }
- * 
+ *
  * const invalid = tryJSONParse('invalid json', (e) => console.error(e));
  * // Returns: undefined (and logs error)
  * ```
