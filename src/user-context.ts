@@ -36,8 +36,6 @@ export type RecentShortcutExecution = {
 
 export type ShortcutExecution = {
   duration: number;
-  input: string;
-  output: string;
   shortcut: string;
   success: boolean;
   timestamp: string;
@@ -186,8 +184,6 @@ export async function loadUserProfile() {
 
 export async function recordExecution({
   duration = 0,
-  input = "",
-  output = "null",
   shortcut = "null",
   success = false,
 }) {
@@ -198,8 +194,6 @@ export async function recordExecution({
 
   const execution: ShortcutExecution = {
     duration,
-    input,
-    output,
     shortcut,
     success,
     timestamp,

@@ -13,12 +13,9 @@ type ContextMap = { CONTEXT_DECISION: ExecutionContext; STATISTICS: unknown[] };
 
 type ExecutionContext = {
   duration: number;
-  input?: string;
-  output: string;
   shortcut: string;
   success: boolean;
   timestamp: string;
-  userGoal?: string;
 };
 
 type MessageTemplates = { [K in SamplingTask]: (arg: ContextMap[K]) => string };

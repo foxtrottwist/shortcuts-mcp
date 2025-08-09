@@ -120,8 +120,6 @@ describe("shortcuts", () => {
       expect(result).toBe(mockStdout);
       expect(mockRecordExecution).toHaveBeenCalledWith({
         duration: expect.any(Number),
-        input: undefined,
-        output: mockStdout,
         shortcut: "Test Shortcut",
         success: true,
       });
@@ -201,8 +199,6 @@ describe("shortcuts", () => {
       );
       expect(mockRecordExecution).toHaveBeenCalledWith({
         duration: expect.any(Number),
-        input: undefined,
-        output: String(mockError),
         shortcut: "Test",
         success: false,
       });

@@ -230,8 +230,6 @@ describe("user-context", () => {
 
       await recordExecution({
         duration: 100,
-        input: "test input",
-        output: "test output",
         shortcut: "Test Shortcut",
         success: true,
       });
@@ -251,8 +249,6 @@ describe("user-context", () => {
 
       await recordExecution({
         duration: 200,
-        input: "",
-        output: "output",
         shortcut: "New Shortcut",
         success: false,
       });
