@@ -9,7 +9,7 @@ import {
   recordExecution,
   saveStatistics,
   saveUserProfile,
-} from "./user-context.js";
+} from "./shortcuts-usage.js";
 
 vi.mock("fs/promises", () => ({
   mkdir: vi.fn(),
@@ -39,7 +39,7 @@ const mockIsOlderThan24Hrs = isOlderThan24Hrs as ReturnType<typeof vi.fn>;
 const mockIsFile = isFile as ReturnType<typeof vi.fn>;
 const mockListShortcuts = listShortcuts as ReturnType<typeof vi.fn>;
 
-describe("user-context", () => {
+describe("shortcuts-usage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();

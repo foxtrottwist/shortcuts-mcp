@@ -206,6 +206,7 @@ export async function recordExecution({
 }
 
 export async function saveStatistics(data: ShortCutStatistics) {
+  data.generatedAt = new Date().toISOString();
   const stats = await load<ShortCutStatistics>(STATISTICS, {});
   const updatedStats = deepmerge()(stats, data);
   await writeFile(STATISTICS, JSON.stringify(updatedStats));

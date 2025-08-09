@@ -257,7 +257,7 @@ While all shortcuts work, some integrate better with Claude workflows:
 1. **Tools**:
 
 - `run_shortcut` - AppleScript execution with comprehensive logging
-- `user_context` - Read and update local preferences and usage tracking
+- `shortcuts_usage` - Read and update local preferences and usage tracking
 - `view_shortcut` - CLI editor opening with fallback guidance
 
 1. **Resources** (automatically embedded):
@@ -317,10 +317,11 @@ npm run build:dxt
 src/
 ├── server.ts              # MCP server configuration
 ├── shortcuts.ts           # AppleScript + CLI integration
-├── user-context.ts        # Local execution tracking and preferences
+├── shortcuts-usage.ts     # Local execution tracking and preferences
+├── sampling.ts            # AI-driven statistics generation via MCP sampling
 ├── helpers.ts             # Security and utility functions
 ├── shortcuts.test.ts      # AppleScript execution tests
-├── user-context.test.ts   # User context and tracking tests
+├── shortcuts-usage.test.ts # Usage tracking and analytics tests
 └── helpers.test.ts        # Security function tests
 ```
 

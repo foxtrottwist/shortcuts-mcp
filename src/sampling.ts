@@ -7,7 +7,7 @@ import {
   loadStatistics,
   saveStatistics,
   ShortCutStatistics,
-} from "./user-context.js";
+} from "./shortcuts-usage.js";
 
 type ContextMap = { CONTEXT_DECISION: ExecutionContext; STATISTICS: unknown[] };
 

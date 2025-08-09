@@ -7,7 +7,7 @@ import {
   shellEscape,
 } from "./helpers.js";
 import { logger } from "./logger.js";
-import { recordExecution } from "./user-context.js";
+import { recordExecution } from "./shortcuts-usage.js";
 
 const execAsync = promisify(exec);
 

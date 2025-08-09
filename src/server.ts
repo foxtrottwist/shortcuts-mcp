@@ -4,13 +4,13 @@ import { z } from "zod";
 import { getVersion } from "./helpers.js";
 import { logger } from "./logger.js";
 import { requestStatistics } from "./sampling.js";
-import { runShortcut, viewShortcut } from "./shortcuts.js";
 import {
   getShortcutsList,
   getSystemState,
   loadUserProfile,
   saveUserProfile,
-} from "./user-context.js";
+} from "./shortcuts-usage.js";
+import { runShortcut, viewShortcut } from "./shortcuts.js";
 
 const server = new FastMCP({
   name: "Shortcuts",
@@ -60,14 +60,14 @@ server.addTool({
   annotations: {
     openWorldHint: false,
     readOnlyHint: false,
-    title: "Usage History & Preferences",
+    title: "Shortcuts Usage & Analytics",
   },
   description:
-    "Access shortcut usage history, execution patterns, and user preferences. Use for questions like 'What shortcuts have I used this week?', 'Which shortcuts failed recently?', 'Show me my most used shortcuts', or when users want to store preferences like 'Remember I prefer Photo Editor Pro for image work' or 'I use the Morning Routine shortcut daily'.",
+    "Access shortcut usage history, execution patterns, and user preferences. Use for questions like 'What shortcuts have I used this week?', 'Which shortcuts failed recently?', 'Show me my most used shortcuts', or when users want to store preferences like 'Remember I prefer Photo Editor Pro for image work' or 'I use the Morning Routine shortcut daily'. (Previously called user_context.)",
   async execute(args, { log }) {
     const { action, data = {}, resources = [] } = args;
 
-    log.info("User context operation started", {
+    log.info("Shortcuts usage operation started", {
       action,
       hasData: Object.keys(data).length > 0,
     });
@@ -119,7 +119,7 @@ server.addTool({
       }
     }
   },
-  name: "user_context",
+  name: "shortcuts_usage",
   parameters: z.object({
     action: z.enum(["read", "update"]),
     data: z

@@ -141,7 +141,7 @@ export function shellEscape(str: string) {
  */
 export function tryJSONParse(s: string, handleError: (e: unknown) => void) {
   try {
-    return JSON.parse(s);
+    return JSON.parse(s) ?? undefined;
   } catch (e) {
     handleError(e);
   }
