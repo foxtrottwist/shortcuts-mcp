@@ -51,6 +51,23 @@
         }
       ],
       [
+        "@semantic-release/npm",
+        {
+          "npmPublish": false
+        }
+      ],
+      [
+        "@semantic-release/git",
+        {
+          "assets": [
+            "package.json",
+            "manifest.json",
+            "CHANGELOG.md"
+          ],
+          "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+        }
+      ],
+      [
         "@semantic-release/github",
         {
           "assets": [
@@ -67,6 +84,7 @@
     "@anthropic-ai/dxt": "^0.2.6",
     "@eslint/js": "^9.26.0",
     "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
     "@tsconfig/node22": "^22.0.1",
     "@types/node": "^24.1.0",
     "eslint-config-prettier": "^10.1.3",

@@ -35,20 +35,10 @@ jobs:
       - name: Build project
         run: npm run build
 
-      - name: Sync manifest version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          export VERSION
-          node -e "
-            const manifest = require('./manifest.json');
-            manifest.version = process.env.VERSION;
-            require('fs').writeFileSync('manifest.json', JSON.stringify(manifest, null, 2));
-          "
-
-      - name: Build DXT package
-        run: npm run build:dxt
-
       - name: Semantic Release
         run: npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build DXT package
+        run: npm run build:dxt
