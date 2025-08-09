@@ -6,7 +6,6 @@ import {
   loadExecutions,
   loadStatistics,
   saveStatistics,
-  ShortCutStatistics,
 } from "./shortcuts-usage.js";
 
 type ContextMap = { CONTEXT_DECISION: ExecutionContext; STATISTICS: unknown[] };
@@ -123,26 +122,28 @@ export async function requestContextDecision(
 }
 
 export async function requestStatistics(session: FastMCPSession) {
-  const stats = await loadStatistics();
+  let stats = await loadStatistics();
   if (!isOlderThan24Hrs(stats?.generatedAt)) {
     return stats;
   }
 
   const { days, executions } = await loadExecutions();
-
-  if (days >= 3 && executions.length >= 20) {
+  if (
+    session.clientCapabilities?.sampling &&
+    days >= 3 &&
+    executions.length >= 20
+  ) {
     const res = await buildRequest(session, "STATISTICS", executions).catch(
       logger.error,
     );
     if (res && res.content.type === "text") {
-      const stats: ShortCutStatistics = tryJSONParse(
-        res.content.text,
-        logger.error,
-      );
-      stats.generatedAt = new Date().toISOString();
-      await saveStatistics(stats);
-      return res;
+      stats = tryJSONParse(res.content.text, logger.error);
+      if (stats && typeof stats === "object" && !Array.isArray(stats)) {
+        await saveStatistics(stats);
+        return stats;
+      }
     }
   }
+
   return stats ?? {};
 }
