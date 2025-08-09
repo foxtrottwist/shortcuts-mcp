@@ -27,8 +27,8 @@
       "description": "Execute a macOS Shortcut by name with optional input"
     },
     {
-      "name": "user_context",
-      "description": "Read, update and add to the User's Profile"
+      "name": "shortcuts_usage",
+      "description": "Access shortcut usage history, execution patterns, and user preferences"
     },
     {
       "name": "view_shortcut",

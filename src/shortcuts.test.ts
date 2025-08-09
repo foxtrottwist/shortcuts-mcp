@@ -11,7 +11,7 @@ vi.mock("util", () => {
   };
 });
 
-vi.mock("./user-context.js", () => ({
+vi.mock("./shortcuts-usage.js", () => ({
   recordExecution: vi.fn(),
 }));
 
@@ -28,7 +28,7 @@ const { _mockExecAsync: mockExecAsync } = (await import("util")) as unknown as {
   _mockExecAsync: ReturnType<typeof vi.fn>;
 };
 
-const { recordExecution } = await import("./user-context.js");
+const { recordExecution } = await import("./shortcuts-usage.js");
 const mockRecordExecution = recordExecution as ReturnType<typeof vi.fn>;
 
 describe("shortcuts", () => {
@@ -120,8 +120,6 @@ describe("shortcuts", () => {
       expect(result).toBe(mockStdout);
       expect(mockRecordExecution).toHaveBeenCalledWith({
         duration: expect.any(Number),
-        input: undefined,
-        output: mockStdout,
         shortcut: "Test Shortcut",
         success: true,
       });
@@ -201,8 +199,6 @@ describe("shortcuts", () => {
       );
       expect(mockRecordExecution).toHaveBeenCalledWith({
         duration: expect.any(Number),
-        input: undefined,
-        output: String(mockError),
         shortcut: "Test",
         success: false,
       });

@@ -6,6 +6,7 @@ import {
   isDirectory,
   isExecError,
   isFile,
+  isOlderThan24Hrs,
   shellEscape,
 } from "./helpers.js";
 
@@ -182,5 +183,25 @@ describe("helpers", () => {
       const result = await isFile("/nonexistent");
       expect(result).toBe(false);
     });
+  });
+});
+
+describe("isOlderThan24Hrs", () => {
+  it("should return true if timestamp is older than 24 hours", () => {
+    const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    expect(isOlderThan24Hrs(twoDaysAgo)).toBe(true);
+  });
+
+  it("should return false if timestamp is less than 24 hours old", () => {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    expect(isOlderThan24Hrs(oneHourAgo)).toBe(false);
+  });
+
+  it("should return true for undefined timestamp", () => {
+    expect(isOlderThan24Hrs(undefined)).toBe(true);
+  });
+
+  it("should return false for invalid timestamp", () => {
+    expect(isOlderThan24Hrs("invalid-date")).toBe(false);
   });
 });

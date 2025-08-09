@@ -1,18 +1,20 @@
 import { Content, FastMCP } from "fastmcp";
 import { z } from "zod";
 
-import { runShortcut, viewShortcut } from "./shortcuts.js";
+import { getVersion } from "./helpers.js";
+import { logger } from "./logger.js";
+import { requestStatistics } from "./sampling.js";
 import {
   getShortcutsList,
   getSystemState,
-  loadRecents,
   loadUserProfile,
   saveUserProfile,
-} from "./user-context.js";
+} from "./shortcuts-usage.js";
+import { runShortcut, viewShortcut } from "./shortcuts.js";
 
 const server = new FastMCP({
   name: "Shortcuts",
-  version: "1.0.0",
+  version: getVersion(),
 });
 
 server.addTool({
@@ -24,9 +26,10 @@ server.addTool({
   description:
     "Execute a macOS Shortcut by name with optional input. Use when users want to run any shortcut including interactive workflows with file pickers, dialogs, location services, and system permissions. All shortcut types are supported through AppleScript integration.",
   async execute(args, { log }) {
+    const { input, name } = args;
     log.info("Tool execution started", {
-      hasInput: !!args.input,
-      shortcutName: args.name,
+      hasInput: !!input,
+      shortcut: name,
       tool: "run_shortcut",
     });
 
@@ -37,19 +40,7 @@ server.addTool({
           type: "text",
         },
         {
-          resource: await server.embedded("shortcuts://available"),
-          type: "resource",
-        },
-        {
-          resource: await server.embedded("shortcuts://runs/recent"),
-          type: "resource",
-        },
-        {
           resource: await server.embedded("context://system/current"),
-          type: "resource",
-        },
-        {
-          resource: await server.embedded("context://user/profile"),
           type: "resource",
         },
       ],
@@ -69,62 +60,66 @@ server.addTool({
   annotations: {
     openWorldHint: false,
     readOnlyHint: false,
-    title: "Usage History & Preferences",
+    title: "Shortcuts Usage & Analytics",
   },
   description:
-    "Access shortcut usage history, execution patterns, and user preferences. Use for questions like 'What shortcuts have I used this week?', 'Which shortcuts failed recently?', 'Show me my most used shortcuts', or when users want to store preferences like 'Remember I prefer Photo Editor Pro for image work' or 'I use the Morning Routine shortcut daily'.",
+    "Access shortcut usage history, execution patterns, and user preferences. Use for questions like 'What shortcuts have I used this week?', 'Which shortcuts failed recently?', 'Show me my most used shortcuts', or when users want to store preferences like 'Remember I prefer Photo Editor Pro for image work' or 'I use the Morning Routine shortcut daily'. (Previously called user_context.)",
   async execute(args, { log }) {
-    const { action, data = {} } = args;
+    const { action, data = {}, resources = [] } = args;
 
-    log.info("User context operation started", {
+    log.info("Shortcuts usage operation started", {
       action,
       hasData: Object.keys(data).length > 0,
     });
 
-    const resources: Record<"content", Content[]> = {
-      content: [
-        {
-          resource: await server.embedded("shortcuts://available"),
-          type: "resource",
-        },
-        {
-          resource: await server.embedded("shortcuts://runs/recent"),
-          type: "resource",
-        },
-        {
-          resource: await server.embedded("context://system/current"),
-          type: "resource",
-        },
-        {
-          resource: await server.embedded("context://user/profile"),
-          type: "resource",
-        },
-      ],
-    };
+    const result: Record<"content", Content[]> = { content: [] };
+
+    for (const resource of resources) {
+      switch (resource) {
+        case "profile":
+          result.content.push({
+            resource: await server.embedded("context://user/profile"),
+            type: "resource",
+          });
+          break;
+        case "shortcuts":
+          result.content.push({
+            resource: await server.embedded("shortcuts://available"),
+            type: "resource",
+          });
+          break;
+        case "statistics":
+          result.content.push({
+            resource: await server.embedded("statistics://generated"),
+            type: "resource",
+          });
+          break;
+      }
+    }
 
     switch (action) {
       case "read": {
-        const profile = await loadUserProfile();
-        log.info("User profile loaded", {
-          hasContext: !!profile.context,
-          hasPreferences: !!profile.preferences,
-        });
-
-        resources.content.push({ text: JSON.stringify(profile), type: "text" });
-        return resources;
+        log.info(`User loaded: ${resources.join(", ")}`);
+        return result;
       }
       case "update": {
         const profile = await saveUserProfile(data);
+
         log.info("User profile updated", {
           updatedFields: Object.keys(data),
         });
 
-        resources.content.push({ text: JSON.stringify(profile), type: "text" });
-        return resources;
+        if (!resources.includes("profile")) {
+          result.content.push({
+            text: JSON.stringify(profile),
+            type: "text",
+          });
+        }
+        return result;
       }
     }
   },
-  name: "user_context",
+  name: "shortcuts_usage",
   parameters: z.object({
     action: z.enum(["read", "update"]),
     data: z
@@ -143,6 +138,12 @@ server.addTool({
           .optional(),
       })
       .optional(),
+    resources: z
+      .array(z.enum(["profile", "shortcuts", "statistics"]))
+      .optional()
+      .describe(
+        "Contextual resources to include. Consider time elapsed and conversation needs: 'shortcuts' for discovery/validation, 'recents' for troubleshooting/patterns, 'profile' for personalized recommendations.",
+      ),
   }),
 });
 
@@ -176,19 +177,6 @@ server.addResource({
   uri: "shortcuts://available",
 });
 
-server.addResource({
-  description:
-    "Last 25 shortcut executions with timestamps, success/failure status, duration, and error details. Used for analyzing usage patterns, identifying failed shortcuts, and calculating time-based statistics.",
-  async load() {
-    return {
-      text: JSON.stringify(await loadRecents()),
-    };
-  },
-  mimeType: "application/json",
-  name: "Recent execution history",
-  uri: "shortcuts://runs/recent",
-});
-
 server.addResourceTemplate({
   arguments: [{ description: "Shortcut name", name: "name", required: true }],
   description:
@@ -212,6 +200,20 @@ server.addResource({
   mimeType: "application/json",
   name: "Live system state",
   uri: "context://system/current",
+});
+
+server.addResource({
+  description:
+    "AI-generated statistics from execution history including success rates, timing analysis, and per-shortcut performance data. Refreshed every 24 hours via sampling analysis.",
+  async load() {
+    const session = server.sessions[0];
+    return {
+      text: JSON.stringify(await requestStatistics(session)),
+    };
+  },
+  mimeType: "application/json",
+  name: "Execution statistics & insights",
+  uri: "statistics://generated",
 });
 
 server.addResource({
@@ -266,4 +268,9 @@ Be specific about which shortcut to use and how to use it effectively.`;
 
 server.start({
   transportType: "stdio",
+});
+
+server.on("connect", async (event) => {
+  const session = event.session;
+  await requestStatistics(session).catch(logger.error);
 });

@@ -1,32 +1,31 @@
-import { deepmerge } from "@fastify/deepmerge";
-import { mkdir, readFile, writeFile } from "fs/promises";
+import deepmerge from "@fastify/deepmerge";
+import { mkdir, readdir, readFile, writeFile } from "fs/promises";
+import path from "path";
 
-import { isDirectory, isFile } from "./helpers.js";
+import { isDirectory, isFile, isOlderThan24Hrs } from "./helpers.js";
 import { logger } from "./logger.js";
 import { listShortcuts } from "./shortcuts.js";
 
 /*
 ~/.shortcuts-mcp/
 ├── user-profile.json          # User preferences and context settings
+├── statistics.json        # 30-day computed statistics
 └── executions/
     ├── 2025-08-01.json        # Daily execution logs (raw data)
     ├── 2025-07-31.json        # Previous daily logs
-    ├── recent.json            # Last 50 executions (quick access)
-    └── statistics.json        # 30-day computed statistics
 
 # File Contents:
 # user-profile.json    - Manual preferences, current projects, focus areas
 # daily logs          - Individual execution records with timestamps
-# recent.json         - Cache of most recent executions  
 # statistics.json     - Computed stats: totals, timing, per-shortcut data
  */
 
+const DATED_FILE = /^\d{4}-\d{2}-\d{2}\.json$/;
 const DATA_DIRECTORY = `${process.env.HOME}/.shortcuts-mcp/`;
 const USER_PROFILE = `${DATA_DIRECTORY}user-profile.json`;
 const EXECUTIONS = `${DATA_DIRECTORY}executions/`;
-const RECENT_EXECUTIONS = `${EXECUTIONS}recents.json`;
 const SHORTCUTS_CACHE = `${DATA_DIRECTORY}shortcuts-cache.txt`;
-const STATISTICS = `${EXECUTIONS}statistics.json`;
+const STATISTICS = `${DATA_DIRECTORY}statistics.json`;
 
 export type RecentShortcutExecution = {
   duration: number;
@@ -37,14 +36,14 @@ export type RecentShortcutExecution = {
 
 export type ShortcutExecution = {
   duration: number;
-  input: string;
-  output: string;
   shortcut: string;
   success: boolean;
   timestamp: string;
 };
 
 export type ShortCutStatistics = Partial<{
+  generatedAt: string;
+  // eslint-disable-next-line perfectionist/sort-object-types
   executions: {
     failures: number;
     successes: number;
@@ -78,16 +77,17 @@ export type UserProfile = {
 };
 
 export async function ensureDataDirectory() {
-  if (await isDirectory(DATA_DIRECTORY)) {
-    return;
-  }
-
   try {
     await mkdir(DATA_DIRECTORY, { recursive: true });
     await mkdir(EXECUTIONS, { recursive: true });
-    await writeFile(RECENT_EXECUTIONS, JSON.stringify([]));
-    await writeFile(STATISTICS, JSON.stringify({}));
-    await writeFile(USER_PROFILE, JSON.stringify({}));
+
+    if (!(await isFile(STATISTICS))) {
+      await writeFile(STATISTICS, "{}");
+    }
+    if (!(await isFile(USER_PROFILE))) {
+      await writeFile(USER_PROFILE, "{}");
+    }
+
     logger.info("Data directory initialized");
   } catch (error) {
     logger.error({ error: String(error) }, "Failed to create data directory");
@@ -96,11 +96,12 @@ export async function ensureDataDirectory() {
 }
 
 export async function getShortcutsList() {
+  const timestampPattern = /^Last Updated: <<<(.*?)>>>\n\n/;
   if (await isFile(SHORTCUTS_CACHE)) {
     const shortcuts = await readFile(SHORTCUTS_CACHE, "utf8");
-    const timestamp = shortcuts.match(/<<<(.*?)>>>/)?.[1];
+    const timestamp = shortcuts.match(timestampPattern)?.[1];
     if (!isOlderThan24Hrs(timestamp)) {
-      return shortcuts;
+      return shortcuts.replace(timestampPattern, "");
     }
   }
 
@@ -123,21 +124,18 @@ export function getSystemState() {
   };
 }
 
-export function isOlderThan24Hrs(timestamp?: string) {
-  if (!timestamp) return true;
-  const ts = new Date(timestamp.trim()).getTime();
-  return !isNaN(ts) && Date.now() - ts > 24 * 60 * 60 * 1000;
-}
-
-export async function load<T = unknown>(path: string, defaultValue: T) {
-  if (await isFile(path)) {
-    const executions = await readFile(path, "utf8");
+export async function load<T = unknown>(filePath: string, defaultValue: T) {
+  if (await isFile(filePath)) {
+    const file = await readFile(filePath, "utf8");
 
     try {
-      return JSON.parse(executions) as T;
+      return JSON.parse(file) as T;
     } catch (error) {
-      logger.error({ error: String(error), path }, "JSON file corrupted");
-      throw new Error(`File at ${path} corrupted - please reset`);
+      logger.error(
+        { error: String(error), path: filePath },
+        "JSON file corrupted",
+      );
+      throw new Error(`File at ${filePath} corrupted - please reset`);
     }
   }
 
@@ -145,8 +143,42 @@ export async function load<T = unknown>(path: string, defaultValue: T) {
   return defaultValue;
 }
 
-export async function loadRecents() {
-  return await load<RecentShortcutExecution[]>(RECENT_EXECUTIONS, []);
+export async function loadExecutions() {
+  if (!(await isDirectory(EXECUTIONS))) {
+    await ensureDataDirectory();
+    return { days: 0, executions: [] };
+  }
+
+  const files = await readdir(EXECUTIONS);
+  const jsonFiles = files
+    .filter((f) => DATED_FILE.test(f))
+    .sort((a, b) => b.localeCompare(a));
+
+  const executions: ShortcutExecution[] = [];
+
+  for (const file of jsonFiles) {
+    try {
+      const content = await readFile(path.join(EXECUTIONS, file), "utf8");
+      const parsed = JSON.parse(content);
+
+      if (Array.isArray(parsed)) {
+        executions.push(...parsed);
+      } else {
+        logger.warn({ file }, "Execution file is not an array, skipping");
+      }
+    } catch (err) {
+      logger.warn(
+        { error: String(err), file },
+        "Skipping unreadable execution file",
+      );
+    }
+  }
+
+  return { days: jsonFiles.length, executions };
+}
+
+export async function loadStatistics() {
+  return await load<ShortCutStatistics>(STATISTICS, {});
 }
 
 export async function loadUserProfile() {
@@ -155,53 +187,29 @@ export async function loadUserProfile() {
 
 export async function recordExecution({
   duration = 0,
-  input = "",
-  output = "null",
   shortcut = "null",
   success = false,
 }) {
   const timestamp = new Date().toISOString();
   const dateString = timestamp.split("T")[0]; // "2025-08-02"
   const filename = `${dateString}.json`;
-  const path = `${EXECUTIONS}${filename}`;
-
-  await recordRecents({ duration, shortcut, success, timestamp });
+  const filePath = `${EXECUTIONS}${filename}`;
 
   const execution: ShortcutExecution = {
     duration,
-    input,
-    output,
     shortcut,
     success,
     timestamp,
   };
 
-  const executions = await load<ShortcutExecution[]>(path, []);
+  const executions = await load<ShortcutExecution[]>(filePath, []);
   executions.push(execution);
-  await writeFile(path, JSON.stringify(executions));
+  await writeFile(filePath, JSON.stringify(executions));
   logger.debug({ shortcut, success }, "Execution recorded");
 }
 
-export async function recordRecents({
-  duration = 0,
-  shortcut = "",
-  success = false,
-  timestamp = "",
-}) {
-  const recent: RecentShortcutExecution = {
-    duration,
-    shortcut,
-    success,
-    timestamp,
-  };
-
-  const recents = await load<RecentShortcutExecution[]>(RECENT_EXECUTIONS, []);
-  recents.push(recent);
-  const trimmedRecents = recents.slice(-25);
-  await writeFile(RECENT_EXECUTIONS, JSON.stringify(trimmedRecents));
-}
-
 export async function saveStatistics(data: ShortCutStatistics) {
+  data.generatedAt = new Date().toISOString();
   const stats = await load<ShortCutStatistics>(STATISTICS, {});
   const updatedStats = deepmerge()(stats, data);
   await writeFile(STATISTICS, JSON.stringify(updatedStats));

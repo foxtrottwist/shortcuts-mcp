@@ -7,7 +7,7 @@ import {
   shellEscape,
 } from "./helpers.js";
 import { logger } from "./logger.js";
-import { recordExecution } from "./user-context.js";
+import { recordExecution } from "./shortcuts-usage.js";
 
 const execAsync = promisify(exec);
 
@@ -51,7 +51,7 @@ export async function runShortcut(shortcut: string, input?: string) {
     }
 
     const output = stdout ?? "Shortcut completed successfully";
-    await recordExecution({ duration, input, output, shortcut, success: true });
+    await recordExecution({ duration, shortcut, success: true });
 
     return output;
   } catch (error) {
@@ -82,8 +82,6 @@ export async function runShortcut(shortcut: string, input?: string) {
 
     await recordExecution({
       duration,
-      input,
-      output: String(error),
       shortcut,
       success: false,
     });

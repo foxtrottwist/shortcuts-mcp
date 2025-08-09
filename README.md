@@ -4,7 +4,7 @@ A TypeScript MCP server that connects Claude to your macOS Shortcuts library. In
 
 ## Why This Exists
 
-Your shortcuts collection handles everything from quick utilities to complex workflows, but using them from Claude meant workarounds or manual execution. This server bridges that gap with AppleScript integration that handles all shortcut types reliably.
+I wanted to integrate my existing automation workflows with AI assistance. Rather than manually triggering shortcuts outside of Claude and then copying results back, this server lets me run shortcuts directly within Claude conversations for better automation.
 
 ## What You Get
 
@@ -12,9 +12,9 @@ Your shortcuts collection handles everything from quick utilities to complex wor
 - **Hybrid Integration**: AppleScript for compatibility + CLI for discovery and management
 - **Permission Handling**: Location services, system integrations work with proper permission context
 - **All Shortcut Types**: Interactive workflows and automation both work reliably
-- **Cross-Device Sync**: Shortcuts sync across Apple devices for ecosystem-wide automation
 - **Reliable Execution**: No hanging on permission requests or interactive elements
 - **Local Usage Tracking**: Execution history and preferences stored only on your computer
+- **Intelligent Analytics**: Automatic usage pattern analysis via MCP sampling (when supported)
 
 ## Installation
 
@@ -79,7 +79,7 @@ Claude, execute my "File Organizer"
 
 Both automated and interactive shortcuts work reliably through AppleScript execution.
 
-## Execution Tracking - Local Organization 📝
+## Execution Tracking - Local Organization
 
 The server keeps track of your shortcut usage to help organize your workflow. **All execution history and preferences stay on your computer** - no data is transmitted anywhere.
 
@@ -89,6 +89,8 @@ The server keeps track of your shortcut usage to help organize your workflow. **
 - Execution success/failure for debugging
 - Basic preferences you set through Claude
 - Usage patterns for shortcut suggestions
+
+**Privacy Note**: Shortcut inputs and outputs are not stored locally. Be cautious when running shortcuts containing sensitive information, as you control what data is shared with your AI assistant.
 
 ### Privacy-First Design
 
@@ -109,16 +111,27 @@ Remember I prefer the "Photo Editor Pro" shortcut for image work
 
 Takes a few runs to build useful history - the tracking helps Claude give better suggestions based on what actually works for you.
 
-## Interactive Shortcuts - Full Support ✅
+### MCP Sampling for Intelligent Analytics
+
+When your MCP client supports sampling, the server automatically generates statistics from your usage data. This includes:
+
+- Success rate analysis across different shortcuts
+- Performance timing patterns
+- Usage trend identification
+- Personalized shortcut recommendations
+
+**Current Status**: Claude Desktop does not yet support MCP sampling, so analytics are not available. The server detects sampling capability automatically and enables these features when supported.
+
+## Interactive Shortcuts - Full Support
 
 **AppleScript integration enables complete interactive shortcut support.** File pickers, dialogs, prompts, and menus all work normally for user interaction.
 
 ### What Works
 
-- ✅ **Interactive workflows** with file pickers, dialogs, and forms
-- ✅ **Location-based shortcuts** with proper permission handling
-- ✅ **Automated processes** that run without user input
-- ✅ **System integrations** (Calendar, Messages, Notes)
+- **Interactive workflows** with file pickers, dialogs, and forms
+- **Location-based shortcuts** with proper permission handling
+- **Automated processes** that run without user input
+- **System integrations** (Calendar, Messages, Notes)
 
 ### How It Works
 
@@ -229,7 +242,9 @@ While all shortcuts work, some integrate better with Claude workflows:
 
 ### Real-World Interactive Examples
 
-- **“Choose Files for Upload”**: File picker dialog for document selection
+**Note**: These examples show what's possible - you need to create and configure these shortcuts in your Shortcuts app first.
+
+- **"Choose Files for Upload"**: File picker dialog for document selection
 - **“Custom QR Generator”**: Input form for text/URL entry with format options
 - **“Photo Processing Menu”**: Image picker followed by processing options menu
 - **“Contact Creator”**: Multi-field form for complete contact information entry
@@ -248,7 +263,6 @@ While all shortcuts work, some integrate better with Claude workflows:
 
 **Error Detection**:
 
-- Apple CLI bug patterns identified and handled
 - Permission error codes (1743) detected with solution guidance
 - Timeout behaviors managed gracefully
 
@@ -257,20 +271,22 @@ While all shortcuts work, some integrate better with Claude workflows:
 1. **Tools**:
 
 - `run_shortcut` - AppleScript execution with comprehensive logging
-- `user_context` - Read and update local preferences and usage tracking
+- `shortcuts_usage` - Read and update local preferences and usage tracking
 - `view_shortcut` - CLI editor opening with fallback guidance
 
 1. **Resources** (automatically embedded):
 
 - `shortcuts://available` - Current shortcuts list
-- `execution://runs/recent` - Recent execution history (local only)
 - `context://system/current` - System state for time-based suggestions
-- `context://user/profile` - Local user preferences and patterns
+- `context://user/profile` - User preferences and usage patterns
+- `statistics://generated` - AI-generated statistics from execution history (when sampling supported)
 
 1. **Enhanced Prompts**: AI-powered shortcut recommendation with name resolution strategies
 1. **Local Data Storage**: Performance tracking, permission detection, debugging information (stays on your computer)
 
 ## Real-World Examples
+
+**Note**: These examples show what's possible - you need to create and configure these shortcuts in your Shortcuts app first.
 
 ### Location-Based Workflows
 
@@ -317,10 +333,11 @@ npm run build:dxt
 src/
 ├── server.ts              # MCP server configuration
 ├── shortcuts.ts           # AppleScript + CLI integration
-├── user-context.ts        # Local execution tracking and preferences
+├── shortcuts-usage.ts     # Local execution tracking and preferences
+├── sampling.ts            # AI-driven statistics generation via MCP sampling
 ├── helpers.ts             # Security and utility functions
 ├── shortcuts.test.ts      # AppleScript execution tests
-├── user-context.test.ts   # User context and tracking tests
+├── shortcuts-usage.test.ts # Usage tracking and analytics tests
 └── helpers.test.ts        # Security function tests
 ```
 

@@ -1,5 +1,8 @@
 import { ExecException } from "child_process";
+import { readFileSync } from "fs";
 import { stat } from "fs/promises";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 
 /**
  * Escapes a string for safe use in AppleScript by doubling backslashes and escaping quotes.
@@ -15,6 +18,17 @@ import { stat } from "fs/promises";
  */
 export function escapeAppleScriptString(str: string): string {
   return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+export function getVersion() {
+  try {
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+    const packagePath = join(__dirname, "../package.json");
+    const packageJson = JSON.parse(readFileSync(packagePath, "utf8"));
+    return packageJson.version;
+  } catch {
+    return "unknown";
+  }
 }
 /**
  * Checks if a path is a directory.
@@ -57,6 +71,34 @@ export async function isFile(path: string) {
 }
 
 /**
+ * Checks if a timestamp is older than 24 hours from the current time.
+ *
+ * @param timestamp - The timestamp to check (Date object or ISO string)
+ * @returns True if timestamp is older than 24 hours, false otherwise
+ *
+ * @example
+ * ```typescript
+ * isOlderThan24Hrs("2025-08-01T12:00:00Z");     // true (if current time is Aug 3+)
+ * isOlderThan24Hrs(new Date("2025-08-08T10:00:00Z")); // false (if current time is Aug 8 11am)
+ * isOlderThan24Hrs(undefined);                   // true (no timestamp means needs refresh)
+ * isOlderThan24Hrs("invalid-date");              // false (invalid dates are not old)
+ * ```
+ */
+export function isOlderThan24Hrs(timestamp?: Date | string) {
+  if (!timestamp) return true;
+
+  let ts: number;
+
+  if (timestamp instanceof Date) {
+    ts = timestamp.getTime();
+  } else {
+    ts = new Date(timestamp.trim()).getTime();
+  }
+
+  return !isNaN(ts) && new Date().getTime() - ts > 24 * 60 * 60 * 1000;
+}
+
+/**
  * Escapes a string for safe use in shell commands by wrapping in single quotes.
  *
  * Handles embedded single quotes by using the '"'"' escape sequence, which closes
@@ -79,4 +121,28 @@ export async function isFile(path: string) {
  */
 export function shellEscape(str: string) {
   return `'${str.replace(/'/g, "'\"'\"'")}'`;
+}
+
+/**
+ * Safely attempts to parse a JSON string with error handling.
+ *
+ * @param s - The string to parse as JSON
+ * @param handleError - Callback function to handle parse errors
+ * @returns Parsed JSON object if successful, undefined if parsing fails
+ *
+ * @example
+ * ```typescript
+ * const data = tryJSONParse('{"key": "value"}', (e) => console.error(e));
+ * // Returns: { key: "value" }
+ *
+ * const invalid = tryJSONParse('invalid json', (e) => console.error(e));
+ * // Returns: undefined (and logs error)
+ * ```
+ */
+export function tryJSONParse(s: string, handleError: (e: unknown) => void) {
+  try {
+    return JSON.parse(s) ?? undefined;
+  } catch (e) {
+    handleError(e);
+  }
 }
