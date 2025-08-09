@@ -57,6 +57,12 @@
         }
       ],
       [
+        "@semantic-release/exec",
+        {
+          "prepareCmd": "node -e \"const fs=require('fs'); const pkg=require('./package.json'); const manifest=require('./manifest.json'); manifest.version=pkg.version; fs.writeFileSync('manifest.json', JSON.stringify(manifest, null, 2));\" && npm run build:dxt"
+        }
+      ],
+      [
         "@semantic-release/git",
         {
           "assets": [
@@ -84,6 +90,7 @@
     "@anthropic-ai/dxt": "^0.2.6",
     "@eslint/js": "^9.26.0",
     "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^10.0.1",
     "@tsconfig/node22": "^22.0.1",
     "@types/node": "^24.1.0",
