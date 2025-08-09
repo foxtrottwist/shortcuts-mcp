@@ -109,6 +109,22 @@ export function shellEscape(str: string) {
   return `'${str.replace(/'/g, "'\"'\"'")}'`;
 }
 
+/**
+ * Safely attempts to parse a JSON string with error handling.
+ * 
+ * @param s - The string to parse as JSON
+ * @param handleError - Callback function to handle parse errors
+ * @returns Parsed JSON object if successful, undefined if parsing fails
+ * 
+ * @example
+ * ```typescript
+ * const data = tryJSONParse('{"key": "value"}', (e) => console.error(e));
+ * // Returns: { key: "value" }
+ * 
+ * const invalid = tryJSONParse('invalid json', (e) => console.error(e));
+ * // Returns: undefined (and logs error)
+ * ```
+ */
 export function tryJSONParse(s: string, handleError: (e: unknown) => void) {
   try {
     return JSON.parse(s);

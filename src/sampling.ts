@@ -128,7 +128,7 @@ export async function requestContextDecision(
 export async function requestStatistics(session: FastMCPSession) {
   const stats = await loadStatistics();
   if (!isOlderThan24Hrs(stats?.generatedAt)) {
-    return;
+    return stats;
   }
 
   const { days, executions } = await loadExecutions();
@@ -140,10 +140,12 @@ export async function requestStatistics(session: FastMCPSession) {
     if (res && res.content.type === "text") {
       const stats: ShortCutStatistics = tryJSONParse(
         res.content.text,
-        () => {},
+        logger.error,
       );
       stats.generatedAt = new Date().toISOString();
       await saveStatistics(stats);
+      return res;
     }
   }
+  return stats ?? {};
 }

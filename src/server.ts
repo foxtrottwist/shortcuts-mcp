@@ -13,7 +13,7 @@ import {
 
 const server = new FastMCP({
   name: "Shortcuts",
-  version: "1.0.0",
+  version: "2.0.0 ",
 });
 
 server.addTool({
