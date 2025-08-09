@@ -124,15 +124,18 @@ export function getSystemState() {
   };
 }
 
-export async function load<T = unknown>(path: string, defaultValue: T) {
-  if (await isFile(path)) {
-    const file = await readFile(path, "utf8");
+export async function load<T = unknown>(filePath: string, defaultValue: T) {
+  if (await isFile(filePath)) {
+    const file = await readFile(filePath, "utf8");
 
     try {
       return JSON.parse(file) as T;
     } catch (error) {
-      logger.error({ error: String(error), path }, "JSON file corrupted");
-      throw new Error(`File at ${path} corrupted - please reset`);
+      logger.error(
+        { error: String(error), path: filePath },
+        "JSON file corrupted",
+      );
+      throw new Error(`File at ${filePath} corrupted - please reset`);
     }
   }
 
@@ -190,7 +193,7 @@ export async function recordExecution({
   const timestamp = new Date().toISOString();
   const dateString = timestamp.split("T")[0]; // "2025-08-02"
   const filename = `${dateString}.json`;
-  const path = `${EXECUTIONS}${filename}`;
+  const filePath = `${EXECUTIONS}${filename}`;
 
   const execution: ShortcutExecution = {
     duration,
@@ -199,9 +202,9 @@ export async function recordExecution({
     timestamp,
   };
 
-  const executions = await load<ShortcutExecution[]>(path, []);
+  const executions = await load<ShortcutExecution[]>(filePath, []);
   executions.push(execution);
-  await writeFile(path, JSON.stringify(executions));
+  await writeFile(filePath, JSON.stringify(executions));
   logger.debug({ shortcut, success }, "Execution recorded");
 }
 
