@@ -50,7 +50,11 @@ export async function runShortcut(shortcut: string, input?: string) {
       );
     }
 
-    const output = stdout ?? "Shortcut completed successfully";
+    const output =
+      stdout && stdout !== "missing value"
+        ? stdout
+        : "Shortcut completed successfully";
+
     await recordExecution({ duration, shortcut, success: true });
 
     return output;
