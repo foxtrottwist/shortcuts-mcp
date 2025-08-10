@@ -2,7 +2,7 @@
   "dxt_version": "0.1",
   "name": "shortcuts-mcp",
   "display_name": "Shortcuts",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "TypeScript MCP server for macOS Shortcuts automation.",
   "long_description": "Enables Claude to **execute and manage macOS Shortcuts** through a hybrid AppleScript + CLI approach, providing:\n\n- **Interactive shortcut support** with file pickers, dialogs, and prompts\n- **Reliable permission handling** for location services and system integrations\n- **Comprehensive user context tracking** with execution history and preferences\n- **AI-enhanced workflow recommendations** based on available shortcuts\n\nTransform Claude into your Mac power user through native automation that handles all shortcut types.",
   "author": {
@@ -17,7 +17,9 @@
     "entry_point": "dist/server.js",
     "mcp_config": {
       "command": "node",
-      "args": ["${__dirname}/dist/server.js"],
+      "args": [
+        "${__dirname}/dist/server.js"
+      ],
       "env": {}
     }
   },
@@ -39,7 +41,10 @@
     {
       "name": "Recommend a Shortcut",
       "description": "Recommend the best shortcut for a specific task based on available shortcuts",
-      "arguments": ["task_description", "context"],
+      "arguments": [
+        "task_description",
+        "context"
+      ],
       "text": "The user wants to: [task description]\nContext: [additional context if provided]\n\nFirst, check the Available Shortcuts resource to see what shortcuts exist.\n\nThen analyze which shortcut(s) would best accomplish this task:\n1. Look for exact matches first\n2. Consider shortcuts that could be adapted\n3. If no perfect match exists, suggest the closest alternatives\n4. Explain why you're recommending specific shortcuts\n5. Provide usage guidance for the recommended shortcut(s)\n\nBe specific about which shortcut to use and how to use it effectively."
     }
   ],
@@ -71,7 +76,9 @@
   },
   "compatibility": {
     "claude_desktop": ">=0.10.0",
-    "platforms": ["darwin"],
+    "platforms": [
+      "darwin"
+    ],
     "runtimes": {
       "node": ">=22.0.0"
     }
