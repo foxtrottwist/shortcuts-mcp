@@ -2,7 +2,7 @@
 
 ### Features
 
-* handle AppleScript "missing value" response for shortcuts with no output ([9e16fa9](https://github.com/foxtrottwist/shortcuts-mcp/commit/9e16fa9b0491e37723f92941ce5e8463e49f3473))
+- handle AppleScript "missing value" response for shortcuts with no output ([9e16fa9](https://github.com/foxtrottwist/shortcuts-mcp/commit/9e16fa9b0491e37723f92941ce5e8463e49f3473))
 
 ## [2.0.0](https://github.com/foxtrottwist/shortcuts-mcp/compare/v1.3.0...v2.0.0) (2025-08-10)
 

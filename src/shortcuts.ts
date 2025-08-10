@@ -51,7 +51,7 @@ export async function runShortcut(shortcut: string, input?: string) {
     }
 
     const output =
-      stdout && stdout !== "missing value"
+      stdout && stdout !== "missing value\n"
         ? stdout
         : "Shortcut completed successfully";
 
