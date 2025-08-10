@@ -2,13 +2,13 @@
 
 ### ⚠ BREAKING CHANGES
 
-* fix semantic-release to properly handle breaking changes and sync versions
-* fix semantic-release to sync manifest.json versions and attach DXT assets
+- fix semantic-release to properly handle breaking changes and sync versions
+- fix semantic-release to sync manifest.json versions and attach DXT assets
 
 ### Features
 
-* fix semantic-release to properly handle breaking changes and sync versions ([7945124](https://github.com/foxtrottwist/shortcuts-mcp/commit/7945124e24fa043832becdd88cae9c5ed9812827))
-* fix semantic-release to sync manifest.json versions and attach DXT assets ([5cba874](https://github.com/foxtrottwist/shortcuts-mcp/commit/5cba874217eca240d97de92f7a06b0fbb65efe11))
+- fix semantic-release to properly handle breaking changes and sync versions ([7945124](https://github.com/foxtrottwist/shortcuts-mcp/commit/7945124e24fa043832becdd88cae9c5ed9812827))
+- fix semantic-release to sync manifest.json versions and attach DXT assets ([5cba874](https://github.com/foxtrottwist/shortcuts-mcp/commit/5cba874217eca240d97de92f7a06b0fbb65efe11))
 
 # [1.3.0](https://github.com/foxtrottwist/shortcuts-mcp/compare/v1.2.1...v1.3.0) (2025-08-09)
 
