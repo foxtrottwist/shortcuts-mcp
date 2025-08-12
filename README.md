@@ -49,6 +49,13 @@ Add to Claude Desktop configuration:
 }
 ```
 
+## Tested MCP Clients
+
+This server has been tested with the following MCP clients:
+
+- **[Claude Desktop](https://claude.ai/download)**
+- **[LM Studio](https://lmstudio.ai/)** - Tested with models like `gpt-oss` and `qwen3-1.7b` (manual installation only)
+
 ## How to Use It
 
 ### Interactive Workflows
