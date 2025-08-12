@@ -2,7 +2,7 @@
 
 ### Bug Fixes
 
-* handle newline in AppleScript "missing value\n" response ([bf38270](https://github.com/foxtrottwist/shortcuts-mcp/commit/bf382701042bf8f88ecd6bed481f091540cd3f8d))
+- handle newline in AppleScript "missing value\n" response ([bf38270](https://github.com/foxtrottwist/shortcuts-mcp/commit/bf382701042bf8f88ecd6bed481f091540cd3f8d))
 
 ## [2.1.0](https://github.com/foxtrottwist/shortcuts-mcp/compare/v2.0.0...v2.1.0) (2025-08-10)
 

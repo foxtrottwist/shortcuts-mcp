@@ -24,7 +24,7 @@ server.addTool({
     title: "Run Shortcut",
   },
   description:
-    "Execute a macOS Shortcut by name with optional input. Use when users want to run any shortcut including interactive workflows with file pickers, dialogs, location services, and system permissions. All shortcut types are supported through AppleScript integration.",
+    "Execute a macOS Shortcut by name with optional input. Supports all shortcut types including interactive workflows.",
   async execute(args, { log }) {
     const { input, name } = args;
     log.info("Tool execution started", {
@@ -63,7 +63,7 @@ server.addTool({
     title: "Shortcuts Usage & Analytics",
   },
   description:
-    "Access shortcut usage history, execution patterns, and user preferences. Use for questions like 'What shortcuts have I used this week?', 'Which shortcuts failed recently?', 'Show me my most used shortcuts', or when users want to store preferences like 'Remember I prefer Photo Editor Pro for image work' or 'I use the Morning Routine shortcut daily'. (Previously called user_context.)",
+    "Access shortcut usage history, execution patterns, and user preferences. Use for usage analysis, troubleshooting, and storing user preferences.",
   async execute(args, { log }) {
     const { action, data = {}, resources = [] } = args;
 
@@ -154,7 +154,7 @@ server.addTool({
     title: "View Shortcut",
   },
   description:
-    "Open a macOS Shortcut in the Shortcuts editor for viewing or editing. Use when users want to examine shortcut contents, modify workflows, or troubleshoot shortcut logic. Opens the shortcut directly in the native Shortcuts app.",
+    "Open a macOS Shortcut in the Shortcuts editor for viewing or editing.",
   async execute(args) {
     return String(await viewShortcut(args.name));
   },
@@ -166,7 +166,7 @@ server.addTool({
 
 server.addResource({
   description:
-    "Complete list of available shortcuts with names and identifiers, refreshed every 24 hours. Contains all shortcuts in the user's library for discovery and name validation.",
+    "Available shortcuts with names and identifiers for discovery and validation.",
   async load() {
     return {
       text: await getShortcutsList(),
@@ -180,7 +180,7 @@ server.addResource({
 server.addResourceTemplate({
   arguments: [{ description: "Shortcut name", name: "name", required: true }],
   description:
-    "Execution history for a specific shortcut including success rates, timing patterns, recent failures, and usage frequency. Used for per-shortcut analysis and troubleshooting.",
+    "Execution history for a specific shortcut including success rates, timing patterns, and usage frequency.",
   async load(args) {
     return { text: args.name };
   },
@@ -191,7 +191,7 @@ server.addResourceTemplate({
 
 server.addResource({
   description:
-    "Current system time, timezone, day of week, and timestamp. Used for calculating time ranges like 'this week', 'today', 'recently' when analyzing execution history.",
+    "Current system time, timezone, and timestamp for time-based analysis.",
   async load() {
     return {
       text: JSON.stringify(getSystemState()),
@@ -204,7 +204,7 @@ server.addResource({
 
 server.addResource({
   description:
-    "AI-generated statistics from execution history including success rates, timing analysis, and per-shortcut performance data. Refreshed every 24 hours via sampling analysis.",
+    "AI-generated execution statistics including success rates, timing analysis, and per-shortcut performance data.",
   async load() {
     const session = server.sessions[0];
     return {
@@ -218,7 +218,7 @@ server.addResource({
 
 server.addResource({
   description:
-    "User preferences including favorite shortcuts, workflow patterns, current projects, and focus areas. Contains stored user preferences and contextual information for personalized recommendations.",
+    "User preferences including favorite shortcuts, workflow patterns, and contextual information.",
   async load() {
     return {
       text: JSON.stringify(await loadUserProfile()),
@@ -243,25 +243,16 @@ server.addPrompt({
     },
   ],
   description:
-    "Analyze available shortcuts and user context to recommend the best shortcut for a specific task. Use when users describe what they want to accomplish but don't know which shortcut to use. Provides intelligent shortcut discovery based on task description and user preferences.",
+    "Recommend the best shortcut for a specific task based on available shortcuts and user preferences.",
   load: async (args) => {
-    return `The user wants to: ${args.task_description}
+    return `Task: ${args.task_description}
 ${args.context ? `Context: ${args.context}` : ""}
 
-Analyze the available shortcuts and user context from the embedded resources to recommend the best shortcut for this task.
+Analyze available shortcuts and recommend the best match. Consider exact matches first, then adaptable alternatives. 
 
-Then analyze which shortcut(s) would best accomplish this task:
-1. Look for exact matches first
-2. Consider shortcuts that could be adapted  
-3. If no perfect match exists, suggest the closest alternatives
-4. Explain why you're recommending specific shortcuts
-5. Provide usage guidance for the recommended shortcut(s)
+Since shortcut names may not clearly indicate their function, if multiple shortcuts could potentially match or if the task description is unclear, ask clarifying questions to help identify the best option.
 
-IMPORTANT: When recommending shortcuts:
-- Use the EXACT name from the shortcuts list (case-sensitive)
-- AppleScript execution (run_shortcut) is more forgiving than CLI commands (view_shortcut)
-
-Be specific about which shortcut to use and how to use it effectively.`;
+Use exact shortcut names from the list and provide usage guidance.`;
   },
   name: "Recommend a Shortcut",
 });

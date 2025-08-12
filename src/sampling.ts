@@ -19,42 +19,25 @@ type SamplingTask = keyof ContextMap;
 export const SAMPLING_MESSAGE_TEMPLATES: MessageTemplates = {
   STATISTICS: (
     executionData: unknown[],
-  ) => `Analyze the following shortcut execution data and return structured statistics in JSON format:
+  ) => `Generate execution statistics for macOS Shortcuts usage analysis. Return JSON with execution counts, success rates, timing metrics, and per-shortcut breakdowns.
 
+Required format:
 {
-  "executions": {
-    "total": number,
-    "successes": number, 
-    "failures": number
-  },
-  "timing": {
-    "average": number,
-    "min": number,
-    "max": number
-  },
-  "per-shortcut": {
-    "Get The Weather": {
-      "count": 4,
-      "success-rate": 1.0,
-      "avg-duration": 1387
-    },
-    "Say it": {
-      "count": 7,
-      "success-rate": 1.0,
-      "avg-duration": 28092
-    }
-    // ... stats for each unique shortcut name
+  "executions": { "total": number, "successes": number, "failures": number },
+  "timing": { "average": number, "min": number, "max": number },
+  "per-shortcut": { 
+    "shortcut-name": { "count": number, "success-rate": number, "avg-duration": number }
   }
 }
 
-Calculate statistics for ALL shortcuts found in the data. Use actual shortcut names as keys in per-shortcut object.
+Calculate for ALL shortcuts in the data. Use actual shortcut names as keys.
 
-Raw execution data: ${JSON.stringify(executionData)}`,
+Data: ${JSON.stringify(executionData)}`,
 };
 
 export const SAMPLING_SYSTEM_PROMPTS: Record<SamplingTask, string> = {
   STATISTICS:
-    "You are a data analyst. Transform raw execution data into structured statistics. Return only valid JSON with no additional text.",
+    "Return only valid JSON with no additional text. Calculate statistics for ALL shortcuts found in the data.",
 };
 
 export const SAMPLING_OPTIONS = {
