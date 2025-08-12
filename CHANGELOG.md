@@ -1,3 +1,9 @@
+## [2.2.0](https://github.com/foxtrottwist/shortcuts-mcp/compare/v2.1.1...v2.2.0) (2025-08-12)
+
+### Features
+
+* modernize prompts for Claude 4 capabilities ([188dae3](https://github.com/foxtrottwist/shortcuts-mcp/commit/188dae39eac6d8277698d4d535cff3b3f0f1b1b8))
+
 ## [2.1.1](https://github.com/foxtrottwist/shortcuts-mcp/compare/v2.1.0...v2.1.1) (2025-08-10)
 
 ### Bug Fixes

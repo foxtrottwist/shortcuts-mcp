@@ -1,6 +1,6 @@
 {
   "name": "shortcuts-mcp",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
