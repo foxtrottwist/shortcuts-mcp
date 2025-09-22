@@ -2,8 +2,10 @@
 dist
 node_modules
 
-# DXT packages and build artifacts
+# MCPB/DXT packages and build artifacts
 *.dxt
+*.mcpb
+temp-mcpb-build/
 
 # macOS system files
 .DS_Store
