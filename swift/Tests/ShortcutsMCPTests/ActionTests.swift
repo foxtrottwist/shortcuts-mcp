@@ -1153,4 +1153,494 @@ struct ActionTests {
         let plistData = try shortcut.encodeToPlist()
         #expect(!plistData.isEmpty)
     }
+
+    // MARK: - ShowNotificationAction Tests
+
+    @Test("ShowNotificationAction creates action with plain string body")
+    func testShowNotificationActionPlainString() throws {
+        let action = ShowNotificationAction("Hello World")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.notification")
+        #expect(workflowAction.parameters["WFNotificationActionBody"] == .string("Hello World"))
+        // Sound defaults to true, so should not be set
+        #expect(workflowAction.parameters["WFNotificationActionSound"] == nil)
+    }
+
+    @Test("ShowNotificationAction creates action with title")
+    func testShowNotificationActionWithTitle() throws {
+        let action = ShowNotificationAction("Body text", title: "My Title")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFNotificationActionBody"] == .string("Body text"))
+        #expect(workflowAction.parameters["WFNotificationActionTitle"] == .string("My Title"))
+    }
+
+    @Test("ShowNotificationAction creates action with sound disabled")
+    func testShowNotificationActionNoSound() throws {
+        let action = ShowNotificationAction("Silent notification", playSound: false)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFNotificationActionSound"] == .bool(false))
+    }
+
+    @Test("ShowNotificationAction supports magic variable body")
+    func testShowNotificationActionWithMagicVariable() throws {
+        let attachment = TextTokenAttachment.actionOutput(uuid: "source-uuid", outputName: "Text")
+        let action = ShowNotificationAction(body: .attachment(attachment))
+        let workflowAction = action.toWorkflowAction()
+
+        guard case .dictionary(let dict) = workflowAction.parameters["WFNotificationActionBody"]
+        else {
+            Issue.record("Expected dictionary parameter")
+            return
+        }
+
+        #expect(dict["WFSerializationType"] == .string("WFTextTokenAttachment"))
+    }
+
+    @Test("ShowNotificationAction with attachment")
+    func testShowNotificationActionWithAttachment() throws {
+        let attachment = TextTokenAttachment.actionOutput(uuid: "image-uuid", outputName: "Image")
+        let action = ShowNotificationAction("Check this out!", attachment: attachment)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFNotificationActionBody"] == .string("Check this out!"))
+        guard case .dictionary(let dict) = workflowAction.parameters["WFInput"] else {
+            Issue.record("Expected WFInput dictionary")
+            return
+        }
+
+        #expect(dict["WFSerializationType"] == .string("WFTextTokenAttachment"))
+    }
+
+    // MARK: - ShowAlertAction Tests
+
+    @Test("ShowAlertAction creates action with plain string message")
+    func testShowAlertActionPlainString() throws {
+        let action = ShowAlertAction("Are you sure?")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.alert")
+        #expect(workflowAction.parameters["WFAlertActionMessage"] == .string("Are you sure?"))
+        // Cancel button defaults to false, so should not be set
+        #expect(workflowAction.parameters["WFAlertActionCancelButtonShown"] == nil)
+    }
+
+    @Test("ShowAlertAction creates action with title")
+    func testShowAlertActionWithTitle() throws {
+        let action = ShowAlertAction("Message text", title: "Alert Title")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFAlertActionMessage"] == .string("Message text"))
+        #expect(workflowAction.parameters["WFAlertActionTitle"] == .string("Alert Title"))
+    }
+
+    @Test("ShowAlertAction creates action with cancel button")
+    func testShowAlertActionWithCancelButton() throws {
+        let action = ShowAlertAction("Confirm action?", showCancelButton: true)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFAlertActionCancelButtonShown"] == .bool(true))
+    }
+
+    @Test("ShowAlertAction.confirm creates confirmation alert")
+    func testShowAlertActionConfirm() throws {
+        let action = ShowAlertAction.confirm("Delete this item?", title: "Confirm Delete")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFAlertActionMessage"] == .string("Delete this item?"))
+        #expect(workflowAction.parameters["WFAlertActionTitle"] == .string("Confirm Delete"))
+        #expect(workflowAction.parameters["WFAlertActionCancelButtonShown"] == .bool(true))
+    }
+
+    @Test("ShowAlertAction supports magic variable message")
+    func testShowAlertActionWithMagicVariable() throws {
+        let attachment = TextTokenAttachment.actionOutput(uuid: "msg-uuid", outputName: "Message")
+        let action = ShowAlertAction(message: .attachment(attachment))
+        let workflowAction = action.toWorkflowAction()
+
+        guard case .dictionary(let dict) = workflowAction.parameters["WFAlertActionMessage"] else {
+            Issue.record("Expected dictionary parameter")
+            return
+        }
+
+        #expect(dict["WFSerializationType"] == .string("WFTextTokenAttachment"))
+    }
+
+    // MARK: - ChooseFromMenuAction Tests
+
+    @Test("ChooseFromMenuAction creates start action with prompt and items")
+    func testChooseFromMenuActionStart() throws {
+        let action = ChooseFromMenuAction(
+            prompt: "Choose an option",
+            items: ["Option 1", "Option 2", "Option 3"],
+            groupingIdentifier: "menu-123"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.choosefrommenu")
+        #expect(workflowAction.parameters["WFControlFlowMode"] == .int(0))
+        #expect(workflowAction.parameters["WFMenuPrompt"] == .string("Choose an option"))
+        #expect(
+            workflowAction.parameters["WFMenuItems"] == .array([
+                .string("Option 1"),
+                .string("Option 2"),
+                .string("Option 3"),
+            ]))
+        #expect(workflowAction.groupingIdentifier == "menu-123")
+    }
+
+    @Test("ChooseFromMenuAction creates menu item action")
+    func testChooseFromMenuActionItem() throws {
+        let action = ChooseFromMenuAction(
+            itemTitle: "Option 1",
+            groupingIdentifier: "menu-123"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFControlFlowMode"] == .int(1))
+        #expect(workflowAction.parameters["WFMenuItemTitle"] == .string("Option 1"))
+        #expect(workflowAction.groupingIdentifier == "menu-123")
+    }
+
+    @Test("ChooseFromMenuAction creates end action")
+    func testChooseFromMenuActionEnd() throws {
+        let action = ChooseFromMenuAction(
+            endMenuWithGroupingIdentifier: "menu-123"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFControlFlowMode"] == .int(2))
+        #expect(workflowAction.groupingIdentifier == "menu-123")
+    }
+
+    @Test("ChooseFromMenuAction.buildMenu creates complete menu structure")
+    func testChooseFromMenuActionBuildMenu() throws {
+        let menuActions = ChooseFromMenuAction.buildMenu(
+            prompt: "Select color",
+            items: ["Red", "Green", "Blue"],
+            groupingIdentifier: "color-menu"
+        )
+
+        // Should have: 1 start + 3 items + 1 end = 5 actions
+        #expect(menuActions.count == 5)
+
+        // Verify start action
+        let startAction = menuActions[0].toWorkflowAction()
+        #expect(startAction.parameters["WFControlFlowMode"] == .int(0))
+        #expect(startAction.parameters["WFMenuPrompt"] == .string("Select color"))
+
+        // Verify item actions
+        for i in 1...3 {
+            let itemAction = menuActions[i].toWorkflowAction()
+            #expect(itemAction.parameters["WFControlFlowMode"] == .int(1))
+        }
+
+        // Verify end action
+        let endAction = menuActions[4].toWorkflowAction()
+        #expect(endAction.parameters["WFControlFlowMode"] == .int(2))
+
+        // All should share the same grouping identifier
+        for menuAction in menuActions {
+            #expect(menuAction.groupingIdentifier == "color-menu")
+        }
+    }
+
+    // MARK: - AskForInputAction Tests
+
+    @Test("AskForInputAction creates action with plain string prompt")
+    func testAskForInputActionPlainString() throws {
+        let action = AskForInputAction("Enter your name")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.ask")
+        #expect(workflowAction.parameters["WFAskActionPrompt"] == .string("Enter your name"))
+        // Text is default, so should not be set
+        #expect(workflowAction.parameters["WFInputType"] == nil)
+    }
+
+    @Test("AskForInputAction creates action with number input type")
+    func testAskForInputActionNumber() throws {
+        let action = AskForInputAction("Enter your age", inputType: .number)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFInputType"] == .string("Number"))
+    }
+
+    @Test("AskForInputAction creates action with default answer")
+    func testAskForInputActionWithDefault() throws {
+        let action = AskForInputAction("Enter your name", defaultAnswer: "John Doe")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFAskActionDefaultAnswer"] == .string("John Doe"))
+    }
+
+    @Test("AskForInputAction with UUID and custom output name")
+    func testAskForInputActionWithUUID() throws {
+        let action = AskForInputAction(
+            "Enter data",
+            uuid: "ask-uuid",
+            customOutputName: "UserInput"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.uuid == "ask-uuid")
+        #expect(workflowAction.customOutputName == "UserInput")
+    }
+
+    @Test("AskForInputAction.askForNumber convenience method")
+    func testAskForInputActionAskForNumber() throws {
+        let action = AskForInputAction.askForNumber("Enter quantity", defaultAnswer: "1")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFInputType"] == .string("Number"))
+        #expect(workflowAction.parameters["WFAskActionDefaultAnswer"] == .string("1"))
+    }
+
+    @Test("AskForInputAction.askForURL convenience method")
+    func testAskForInputActionAskForURL() throws {
+        let action = AskForInputAction.askForURL("Enter website")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFInputType"] == .string("URL"))
+    }
+
+    @Test("AskForInputAction.askForDate convenience method")
+    func testAskForInputActionAskForDate() throws {
+        let action = AskForInputAction.askForDate("Select date")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFInputType"] == .string("Date"))
+    }
+
+    @Test("AskForInputAction.askForTime convenience method")
+    func testAskForInputActionAskForTime() throws {
+        let action = AskForInputAction.askForTime("Select time")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFInputType"] == .string("Time"))
+    }
+
+    @Test("AskForInputAction.askForDateTime convenience method")
+    func testAskForInputActionAskForDateTime() throws {
+        let action = AskForInputAction.askForDateTime("Select date and time")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFInputType"] == .string("Date and Time"))
+    }
+
+    @Test("AskInputType has all required cases")
+    func testAskInputTypeCases() throws {
+        let types = AskInputType.allCases
+        #expect(types.count == 6)
+        #expect(types.contains(.text))
+        #expect(types.contains(.number))
+        #expect(types.contains(.url))
+        #expect(types.contains(.date))
+        #expect(types.contains(.time))
+        #expect(types.contains(.dateAndTime))
+    }
+
+    // MARK: - ChooseFromListAction Tests
+
+    @Test("ChooseFromListAction creates basic action")
+    func testChooseFromListActionBasic() throws {
+        let action = ChooseFromListAction()
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.choosefromlist")
+        // No prompt set
+        #expect(workflowAction.parameters["WFChooseFromListActionPrompt"] == nil)
+        // Multiple selection defaults to false
+        #expect(workflowAction.parameters["WFChooseFromListActionSelectMultiple"] == nil)
+    }
+
+    @Test("ChooseFromListAction creates action with prompt")
+    func testChooseFromListActionWithPrompt() throws {
+        let action = ChooseFromListAction(prompt: "Choose an item")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(
+            workflowAction.parameters["WFChooseFromListActionPrompt"] == .string("Choose an item"))
+    }
+
+    @Test("ChooseFromListAction creates action with multiple selection")
+    func testChooseFromListActionMultipleSelection() throws {
+        let action = ChooseFromListAction(selectMultiple: true)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFChooseFromListActionSelectMultiple"] == .bool(true))
+    }
+
+    @Test("ChooseFromListAction creates action with select all")
+    func testChooseFromListActionSelectAll() throws {
+        let action = ChooseFromListAction(selectMultiple: true, selectAll: true)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFChooseFromListActionSelectMultiple"] == .bool(true))
+        #expect(workflowAction.parameters["WFChooseFromListActionSelectAll"] == .bool(true))
+    }
+
+    @Test("ChooseFromListAction with action output input")
+    func testChooseFromListActionFromActionOutput() throws {
+        let action = ChooseFromListAction(
+            fromActionWithUUID: "list-uuid",
+            outputName: "Items",
+            prompt: "Select items"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        guard case .dictionary(let dict) = workflowAction.parameters["WFInput"] else {
+            Issue.record("Expected WFInput dictionary")
+            return
+        }
+
+        #expect(dict["WFSerializationType"] == .string("WFTextTokenAttachment"))
+        guard case .dictionary(let valueDict) = dict["Value"] else {
+            Issue.record("Expected Value dictionary")
+            return
+        }
+        #expect(valueDict["OutputUUID"] == .string("list-uuid"))
+        #expect(valueDict["OutputName"] == .string("Items"))
+    }
+
+    @Test("ChooseFromListAction.fromShortcutInput convenience method")
+    func testChooseFromListActionFromShortcutInput() throws {
+        let action = ChooseFromListAction.fromShortcutInput(prompt: "Choose from input")
+        let workflowAction = action.toWorkflowAction()
+
+        guard case .dictionary(let dict) = workflowAction.parameters["WFInput"] else {
+            Issue.record("Expected WFInput dictionary")
+            return
+        }
+
+        guard case .dictionary(let valueDict) = dict["Value"] else {
+            Issue.record("Expected Value dictionary")
+            return
+        }
+
+        #expect(valueDict["Type"] == .string("ExtensionInput"))
+    }
+
+    @Test("ChooseFromListAction.fromVariable convenience method")
+    func testChooseFromListActionFromVariable() throws {
+        let action = ChooseFromListAction.fromVariable("MyList", prompt: "Choose from list")
+        let workflowAction = action.toWorkflowAction()
+
+        guard case .dictionary(let dict) = workflowAction.parameters["WFInput"] else {
+            Issue.record("Expected WFInput dictionary")
+            return
+        }
+
+        guard case .dictionary(let valueDict) = dict["Value"] else {
+            Issue.record("Expected Value dictionary")
+            return
+        }
+
+        #expect(valueDict["Type"] == .string("Variable"))
+        #expect(valueDict["VariableName"] == .string("MyList"))
+    }
+
+    @Test("ChooseFromListAction with UUID and custom output name")
+    func testChooseFromListActionWithUUID() throws {
+        let action = ChooseFromListAction(
+            uuid: "choose-uuid",
+            customOutputName: "SelectedItem"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.uuid == "choose-uuid")
+        #expect(workflowAction.customOutputName == "SelectedItem")
+    }
+
+    // MARK: - UI Actions Shortcut Integration Tests
+
+    @Test("Can create notification shortcut")
+    func testNotificationShortcut() throws {
+        let textUUID = UUID().uuidString
+        let textAction = TextAction("Important message!", uuid: textUUID)
+        let notifyAction = ShowNotificationAction(
+            body: .attachment(.actionOutput(uuid: textUUID, outputName: "Text")),
+            title: .string("Alert")
+        )
+
+        let shortcut = Shortcut(
+            name: "Send Notification",
+            actions: [
+                textAction.toWorkflowAction(),
+                notifyAction.toWorkflowAction(),
+            ]
+        )
+
+        #expect(shortcut.actions.count == 2)
+        #expect(shortcut.actions[0].identifier == "is.workflow.actions.gettext")
+        #expect(shortcut.actions[1].identifier == "is.workflow.actions.notification")
+
+        // Verify encoding works
+        let plistData = try shortcut.encodeToPlist()
+        #expect(!plistData.isEmpty)
+
+        let decoded = try Shortcut.decode(from: plistData)
+        #expect(decoded.actions.count == 2)
+    }
+
+    @Test("Can create input prompt shortcut")
+    func testInputPromptShortcut() throws {
+        let askUUID = UUID().uuidString
+        let askAction = AskForInputAction(
+            "What is your name?",
+            defaultAnswer: "Guest",
+            uuid: askUUID,
+            customOutputName: "Name"
+        )
+        let showAction = ShowResultAction(
+            fromActionWithUUID: askUUID,
+            outputName: "Name"
+        )
+
+        let shortcut = Shortcut(
+            name: "Greet User",
+            actions: [
+                askAction.toWorkflowAction(),
+                showAction.toWorkflowAction(),
+            ]
+        )
+
+        #expect(shortcut.actions.count == 2)
+        #expect(shortcut.actions[0].identifier == "is.workflow.actions.ask")
+        #expect(shortcut.actions[1].identifier == "is.workflow.actions.showresult")
+
+        // Verify encoding works
+        let plistData = try shortcut.encodeToPlist()
+        #expect(!plistData.isEmpty)
+    }
+
+    @Test("Can create menu shortcut with all menu actions")
+    func testMenuShortcut() throws {
+        let groupId = UUID().uuidString
+        let menuActions = ChooseFromMenuAction.buildMenu(
+            prompt: "Choose a color",
+            items: ["Red", "Blue"],
+            groupingIdentifier: groupId
+        )
+
+        let shortcut = Shortcut(
+            name: "Color Picker",
+            actions: menuActions.map { $0.toWorkflowAction() }
+        )
+
+        // 1 start + 2 items + 1 end = 4 actions
+        #expect(shortcut.actions.count == 4)
+
+        // All actions should be choosefrommenu
+        for action in shortcut.actions {
+            #expect(action.identifier == "is.workflow.actions.choosefrommenu")
+            #expect(action.groupingIdentifier == groupId)
+        }
+
+        // Verify encoding works
+        let plistData = try shortcut.encodeToPlist()
+        #expect(!plistData.isEmpty)
+    }
 }
