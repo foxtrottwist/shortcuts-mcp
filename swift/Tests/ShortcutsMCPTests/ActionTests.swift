@@ -447,4 +447,358 @@ struct ActionTests {
         #expect(methods.contains(.patch))
         #expect(methods.contains(.delete))
     }
+
+    // MARK: - SaveFileAction Tests
+
+    @Test("SaveFileAction creates action with document picker prompt")
+    func testSaveFileActionWithPicker() throws {
+        let action = SaveFileAction()
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.documentpicker.save")
+        #expect(workflowAction.parameters["WFFileStorageService"] == .string("iCloud Drive"))
+        #expect(workflowAction.parameters["WFAskWhereToSave"] == .bool(true))
+    }
+
+    @Test("SaveFileAction creates action with specific destination path")
+    func testSaveFileActionWithPath() throws {
+        let action = SaveFileAction(
+            service: .iCloudDrive,
+            destinationPath: "/Shortcuts/data.json",
+            overwriteIfExists: true
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.documentpicker.save")
+        #expect(workflowAction.parameters["WFFileStorageService"] == .string("iCloud Drive"))
+        #expect(workflowAction.parameters["WFAskWhereToSave"] == .bool(false))
+        #expect(workflowAction.parameters["WFFileDestinationPath"] == .string("/Shortcuts/data.json"))
+        #expect(workflowAction.parameters["WFSaveFileOverwrite"] == .bool(true))
+    }
+
+    @Test("SaveFileAction supports Dropbox storage")
+    func testSaveFileActionDropbox() throws {
+        let action = SaveFileAction.toDropbox(path: "/backup/file.txt", overwrite: false)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFFileStorageService"] == .string("Dropbox"))
+        #expect(workflowAction.parameters["WFFileDestinationPath"] == .string("/backup/file.txt"))
+    }
+
+    @Test("SaveFileAction convenience method askWhereToSave")
+    func testSaveFileActionAskWhereToSave() throws {
+        let action = SaveFileAction.askWhereToSave(service: .dropbox)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFFileStorageService"] == .string("Dropbox"))
+        #expect(workflowAction.parameters["WFAskWhereToSave"] == .bool(true))
+    }
+
+    @Test("SaveFileAction with UUID and custom output name")
+    func testSaveFileActionWithUUID() throws {
+        let action = SaveFileAction(
+            service: .iCloudDrive,
+            uuid: "save-file-uuid",
+            customOutputName: "SavedFile"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.uuid == "save-file-uuid")
+        #expect(workflowAction.customOutputName == "SavedFile")
+    }
+
+    @Test("SaveFileAction supports variable destination path")
+    func testSaveFileActionWithVariablePath() throws {
+        let attachment = TextTokenAttachment.actionOutput(uuid: "path-uuid", outputName: "Path")
+        let action = SaveFileAction(
+            service: .iCloudDrive,
+            destinationPath: .attachment(attachment),
+            overwriteIfExists: true
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        guard case .dictionary(let dict) = workflowAction.parameters["WFFileDestinationPath"] else {
+            Issue.record("Expected WFFileDestinationPath dictionary")
+            return
+        }
+
+        #expect(dict["WFSerializationType"] == .string("WFTextTokenAttachment"))
+    }
+
+    // MARK: - GetFileAction Tests
+
+    @Test("GetFileAction creates action with document picker")
+    func testGetFileActionWithPicker() throws {
+        let action = GetFileAction()
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.documentpicker.open")
+        #expect(workflowAction.parameters["WFFileStorageService"] == .string("iCloud Drive"))
+        #expect(workflowAction.parameters["WFShowFilePicker"] == .bool(true))
+    }
+
+    @Test("GetFileAction creates action with specific file path")
+    func testGetFileActionWithPath() throws {
+        let action = GetFileAction(
+            service: .iCloudDrive,
+            filePath: "/Shortcuts/config.json",
+            errorIfNotFound: true
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.documentpicker.open")
+        #expect(workflowAction.parameters["WFShowFilePicker"] == .bool(false))
+        #expect(workflowAction.parameters["WFGetFilePath"] == .string("/Shortcuts/config.json"))
+        #expect(workflowAction.parameters["WFFileErrorIfNotFound"] == .bool(true))
+    }
+
+    @Test("GetFileAction supports multiple file selection")
+    func testGetFileActionSelectMultiple() throws {
+        let action = GetFileAction(service: .iCloudDrive, selectMultiple: true)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFShowFilePicker"] == .bool(true))
+        #expect(workflowAction.parameters["SelectMultiple"] == .bool(true))
+    }
+
+    @Test("GetFileAction convenience method selectFile")
+    func testGetFileActionSelectFile() throws {
+        let action = GetFileAction.selectFile(service: .dropbox)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFFileStorageService"] == .string("Dropbox"))
+        #expect(workflowAction.parameters["WFShowFilePicker"] == .bool(true))
+        #expect(workflowAction.parameters["SelectMultiple"] == .bool(false))
+    }
+
+    @Test("GetFileAction convenience method selectFiles")
+    func testGetFileActionSelectFiles() throws {
+        let action = GetFileAction.selectFiles()
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["SelectMultiple"] == .bool(true))
+    }
+
+    @Test("GetFileAction convenience method fromICloud")
+    func testGetFileActionFromICloud() throws {
+        let action = GetFileAction.fromICloud(path: "/data/file.txt", errorIfNotFound: false)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFFileStorageService"] == .string("iCloud Drive"))
+        #expect(workflowAction.parameters["WFGetFilePath"] == .string("/data/file.txt"))
+        #expect(workflowAction.parameters["WFFileErrorIfNotFound"] == .bool(false))
+    }
+
+    @Test("GetFileAction convenience method fromDropbox")
+    func testGetFileActionFromDropbox() throws {
+        let action = GetFileAction.fromDropbox(path: "/backup/data.json")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFFileStorageService"] == .string("Dropbox"))
+        #expect(workflowAction.parameters["WFGetFilePath"] == .string("/backup/data.json"))
+    }
+
+    @Test("GetFileAction with UUID and custom output name")
+    func testGetFileActionWithUUID() throws {
+        let action = GetFileAction(
+            service: .iCloudDrive,
+            uuid: "get-file-uuid",
+            customOutputName: "SelectedFile"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.uuid == "get-file-uuid")
+        #expect(workflowAction.customOutputName == "SelectedFile")
+    }
+
+    @Test("GetFileAction supports variable file path")
+    func testGetFileActionWithVariablePath() throws {
+        let attachment = TextTokenAttachment.actionOutput(uuid: "path-uuid", outputName: "FilePath")
+        let action = GetFileAction(
+            service: .iCloudDrive,
+            filePath: .attachment(attachment),
+            errorIfNotFound: true
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        guard case .dictionary(let dict) = workflowAction.parameters["WFGetFilePath"] else {
+            Issue.record("Expected WFGetFilePath dictionary")
+            return
+        }
+
+        #expect(dict["WFSerializationType"] == .string("WFTextTokenAttachment"))
+    }
+
+    // MARK: - SelectFileAction Tests
+
+    @Test("SelectFileAction is alias for GetFileAction")
+    func testSelectFileActionAlias() throws {
+        let action: SelectFileAction = GetFileAction.selectFile()
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.documentpicker.open")
+        #expect(workflowAction.parameters["WFShowFilePicker"] == .bool(true))
+    }
+
+    // MARK: - SelectFolderAction Tests
+
+    @Test("SelectFolderAction creates action with folder picker")
+    func testSelectFolderAction() throws {
+        let action = SelectFolderAction()
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.file.select")
+        #expect(workflowAction.parameters["WFPickingMode"] == .string("Folders"))
+    }
+
+    @Test("SelectFolderAction supports multiple selection")
+    func testSelectFolderActionMultiple() throws {
+        let action = SelectFolderAction(selectMultiple: true)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["SelectMultiple"] == .bool(true))
+    }
+
+    @Test("SelectFolderAction with UUID and custom output name")
+    func testSelectFolderActionWithUUID() throws {
+        let action = SelectFolderAction(
+            selectMultiple: false,
+            uuid: "folder-uuid",
+            customOutputName: "SelectedFolder"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.uuid == "folder-uuid")
+        #expect(workflowAction.customOutputName == "SelectedFolder")
+    }
+
+    // MARK: - GetFolderContentsAction Tests
+
+    @Test("GetFolderContentsAction creates action")
+    func testGetFolderContentsAction() throws {
+        let action = GetFolderContentsAction()
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.file.getfoldercontents")
+        // Non-recursive should not have the parameter set
+        #expect(workflowAction.parameters["Recursive"] == nil)
+    }
+
+    @Test("GetFolderContentsAction supports recursive mode")
+    func testGetFolderContentsActionRecursive() throws {
+        let action = GetFolderContentsAction(recursive: true)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["Recursive"] == .bool(true))
+    }
+
+    @Test("GetFolderContentsAction with UUID and custom output name")
+    func testGetFolderContentsActionWithUUID() throws {
+        let action = GetFolderContentsAction(
+            recursive: false,
+            uuid: "contents-uuid",
+            customOutputName: "FolderFiles"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.uuid == "contents-uuid")
+        #expect(workflowAction.customOutputName == "FolderFiles")
+    }
+
+    // MARK: - FileStorageService Tests
+
+    @Test("FileStorageService has all required cases")
+    func testFileStorageServiceCases() throws {
+        let services = FileStorageService.allCases
+        #expect(services.count == 2)
+        #expect(services.contains(.iCloudDrive))
+        #expect(services.contains(.dropbox))
+    }
+
+    @Test("FileStorageService raw values are correct")
+    func testFileStorageServiceRawValues() throws {
+        #expect(FileStorageService.iCloudDrive.rawValue == "iCloud Drive")
+        #expect(FileStorageService.dropbox.rawValue == "Dropbox")
+    }
+
+    // MARK: - File Action Shortcut Integration Tests
+
+    @Test("Can create shortcut with save file action")
+    func testSaveFileShortcut() throws {
+        let textUUID = UUID().uuidString
+        let textAction = TextAction("Hello, this is test content.", uuid: textUUID)
+        let saveAction = SaveFileAction.toICloud(
+            path: "/Shortcuts/test.txt",
+            overwrite: true
+        )
+
+        let shortcut = Shortcut(
+            name: "Save Text to File",
+            actions: [
+                textAction.toWorkflowAction(),
+                saveAction.toWorkflowAction(),
+            ]
+        )
+
+        #expect(shortcut.actions.count == 2)
+        #expect(shortcut.actions[0].identifier == "is.workflow.actions.gettext")
+        #expect(shortcut.actions[1].identifier == "is.workflow.actions.documentpicker.save")
+
+        // Verify encoding works
+        let plistData = try shortcut.encodeToPlist()
+        #expect(!plistData.isEmpty)
+
+        let decoded = try Shortcut.decode(from: plistData)
+        #expect(decoded.actions.count == 2)
+    }
+
+    @Test("Can create shortcut with get file and show result")
+    func testGetFileShortcut() throws {
+        let getFileUUID = UUID().uuidString
+        let getAction = GetFileAction.fromICloud(
+            path: "/Shortcuts/config.json",
+            uuid: getFileUUID
+        )
+        let showAction = ShowResultAction(
+            fromActionWithUUID: getFileUUID,
+            outputName: "File"
+        )
+
+        let shortcut = Shortcut(
+            name: "Read Config File",
+            actions: [
+                getAction.toWorkflowAction(),
+                showAction.toWorkflowAction(),
+            ]
+        )
+
+        #expect(shortcut.actions.count == 2)
+        #expect(shortcut.actions[0].identifier == "is.workflow.actions.documentpicker.open")
+        #expect(shortcut.actions[1].identifier == "is.workflow.actions.showresult")
+
+        // Verify encoding works
+        let plistData = try shortcut.encodeToPlist()
+        #expect(!plistData.isEmpty)
+    }
+
+    @Test("Can create shortcut with file picker")
+    func testFilePickerShortcut() throws {
+        let selectUUID = UUID().uuidString
+        let selectAction = GetFileAction.selectFiles(uuid: selectUUID)
+        let showAction = ShowResultAction(
+            fromActionWithUUID: selectUUID,
+            outputName: "Files"
+        )
+
+        let shortcut = Shortcut(
+            name: "Select and Show Files",
+            actions: [
+                selectAction.toWorkflowAction(),
+                showAction.toWorkflowAction(),
+            ]
+        )
+
+        #expect(shortcut.actions.count == 2)
+        #expect(shortcut.actions[0].parameters["SelectMultiple"] == .bool(true))
+    }
 }
