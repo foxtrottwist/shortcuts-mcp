@@ -154,7 +154,10 @@ public actor ShortcutsServer {
                 throw MCPError.internalError("Server was deallocated")
             }
 
-            return ListResources.Result(resources: ShortcutsResources.all)
+            // Combine base resources with action catalog
+            var allResources = ShortcutsResources.all
+            allResources.append(ActionCatalogResource.catalog)
+            return ListResources.Result(resources: allResources)
         }
 
         // Register resources/read handler
@@ -163,7 +166,12 @@ public actor ShortcutsServer {
                 throw MCPError.internalError("Server was deallocated")
             }
 
-            // Load the resource content
+            // Try action catalog first (handles actions:// URIs)
+            if let content = try ActionCatalogResource.load(uri: params.uri) {
+                return ReadResource.Result(contents: [content])
+            }
+
+            // Fall back to shortcuts resources
             guard let content = try await ShortcutsResources.load(uri: params.uri) else {
                 throw MCPError.invalidParams("Unknown resource: \(params.uri)")
             }
@@ -177,7 +185,10 @@ public actor ShortcutsServer {
                 throw MCPError.internalError("Server was deallocated")
             }
 
-            return ListResourceTemplates.Result(templates: ShortcutsResources.templates)
+            // Combine base templates with action catalog templates
+            var allTemplates = ShortcutsResources.templates
+            allTemplates.append(contentsOf: ActionCatalogResource.templates)
+            return ListResourceTemplates.Result(templates: allTemplates)
         }
     }
 
