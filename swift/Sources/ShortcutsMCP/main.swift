@@ -4,17 +4,20 @@ import MCP
 @main
 struct ShortcutsMCP {
     static func main() async throws {
-        let server = Server(
-            name: "shortcuts-mcp",
-            version: "4.0.0"
+        let configuration = ShortcutsServer.Configuration(
+            instructions: """
+                Shortcuts MCP provides tools to interact with macOS Shortcuts app.
+                Available operations:
+                - Run shortcuts by name
+                - View shortcuts in the Shortcuts editor
+                - Get user context and execution history
+                """
         )
 
-        // TODO: Register tool handlers in future iterations
-        // - run_shortcut: Execute shortcuts via AppleScript
-        // - view_shortcut: Open shortcut in editor
-        // - shortcuts_usage: User profile and execution tracking
-
+        let server = ShortcutsServer(configuration: configuration)
         let transport = StdioTransport()
+
         try await server.start(transport: transport)
+        await server.waitUntilCompleted()
     }
 }

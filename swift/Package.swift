@@ -15,6 +15,9 @@ let package = Package(
             name: "ShortcutsMCP",
             dependencies: [
                 .product(name: "MCP", package: "swift-sdk"),
+            ],
+            swiftSettings: [
+                .unsafeFlags(["-parse-as-library"]),
             ]
         ),
     ]
