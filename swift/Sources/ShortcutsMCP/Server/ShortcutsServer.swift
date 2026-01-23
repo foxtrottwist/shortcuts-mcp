@@ -110,7 +110,8 @@ public actor ShortcutsServer {
                 RunShortcutTool.definition,
                 ListShortcutsTool.definition,
                 ViewShortcutTool.definition,
-                ShortcutsUsageTool.definition
+                ShortcutsUsageTool.definition,
+                CreateShortcutTool.definition
             ])
         }
 
@@ -134,6 +135,10 @@ public actor ShortcutsServer {
 
             case ShortcutsUsageTool.name:
                 return try await ShortcutsUsageTool.execute(arguments: params.arguments)
+
+            case CreateShortcutTool.name:
+                let input = try CreateShortcutTool.parseInput(from: params.arguments)
+                return try await CreateShortcutTool.execute(input: input)
 
             default:
                 throw MCPError.invalidParams("Unknown tool: \(params.name)")
