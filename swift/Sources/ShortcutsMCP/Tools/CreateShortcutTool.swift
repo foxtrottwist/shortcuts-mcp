@@ -100,7 +100,7 @@ public struct CreateShortcutTool {
                 ]),
                 "sign": .object([
                     "type": "boolean",
-                    "description": "Whether to sign the shortcut after creation (default: false). Signing is required for import."
+                    "description": "Whether to sign the shortcut after creation (default: true). Signing is required for import."
                 ]),
                 "signingMode": .object([
                     "type": "string",
@@ -185,7 +185,7 @@ public struct CreateShortcutTool {
             name: String,
             actions: [ActionDefinition],
             icon: IconConfiguration? = nil,
-            sign: Bool = false,
+            sign: Bool = true,
             signingMode: ShortcutSigner.SigningMode = .anyone,
             autoImport: Bool = false,
             importQuestions: [ImportQuestion]? = nil
@@ -207,7 +207,7 @@ public struct CreateShortcutTool {
             template: String,
             templateParams: [String: TemplateParameterValue] = [:],
             icon: IconConfiguration? = nil,
-            sign: Bool = false,
+            sign: Bool = true,
             signingMode: ShortcutSigner.SigningMode = .anyone,
             autoImport: Bool = false,
             importQuestions: [ImportQuestion]? = nil
@@ -604,7 +604,7 @@ public struct CreateShortcutTool {
         }
 
         // Parse signing options
-        let sign = arguments["sign"]?.boolValue ?? false
+        let sign = arguments["sign"]?.boolValue ?? true
         let signingMode: ShortcutSigner.SigningMode
         if let modeStr = arguments["signingMode"]?.stringValue {
             switch modeStr {
