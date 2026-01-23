@@ -706,6 +706,308 @@ struct TemplateEngineGenerationTests {
     }
 }
 
+// MARK: - APIRequestTemplate Tests
+
+@Suite("APIRequestTemplate Tests")
+struct APIRequestTemplateTests {
+    @Test("Template has correct metadata")
+    func templateHasCorrectMetadata() {
+        #expect(APIRequestTemplate.name == "api-request")
+        #expect(APIRequestTemplate.displayName == "API Request")
+        #expect(APIRequestTemplate.description.contains("HTTP request"))
+        #expect(APIRequestTemplate.parameters.count == 4)
+    }
+
+    @Test("Template has correct parameters")
+    func templateHasCorrectParameters() {
+        let params = APIRequestTemplate.parameters
+
+        // url parameter
+        let urlParam = params.first { $0.name == "url" }
+        #expect(urlParam?.type == .url)
+        #expect(urlParam?.required == true)
+
+        // method parameter
+        let methodParam = params.first { $0.name == "method" }
+        #expect(methodParam?.type == .choice)
+        #expect(methodParam?.required == false)
+        #expect(methodParam?.defaultValue == .choice("GET"))
+        #expect(methodParam?.options == ["GET", "POST", "PUT", "DELETE"])
+
+        // authHeader parameter
+        let authParam = params.first { $0.name == "authHeader" }
+        #expect(authParam?.type == .string)
+        #expect(authParam?.required == false)
+
+        // jsonPath parameter
+        let jsonPathParam = params.first { $0.name == "jsonPath" }
+        #expect(jsonPathParam?.type == .string)
+        #expect(jsonPathParam?.required == false)
+    }
+
+    @Test("Generates simple GET request")
+    func generatesSimpleGETRequest() throws {
+        let template = APIRequestTemplate()
+        let actions = try template.generate(with: [
+            "url": .url("https://api.example.com/data")
+        ])
+
+        // Should have 2 actions: URLAction and ShowResultAction
+        #expect(actions.count == 2)
+
+        // First action should be URLAction
+        let urlAction = actions[0].toWorkflowAction()
+        #expect(urlAction.identifier == "is.workflow.actions.downloadurl")
+        #expect(urlAction.parameters["WFURL"] == .string("https://api.example.com/data"))
+        #expect(urlAction.uuid != nil)
+
+        // Second action should be ShowResultAction
+        let showAction = actions[1].toWorkflowAction()
+        #expect(showAction.identifier == "is.workflow.actions.showresult")
+    }
+
+    @Test("Generates POST request")
+    func generatesPOSTRequest() throws {
+        let template = APIRequestTemplate()
+        let actions = try template.generate(with: [
+            "url": .url("https://api.example.com/data"),
+            "method": .choice("POST"),
+        ])
+
+        // First action should be URLAction with POST method
+        let urlAction = actions[0].toWorkflowAction()
+        #expect(urlAction.identifier == "is.workflow.actions.downloadurl")
+        #expect(urlAction.parameters["WFHTTPMethod"] == .string("POST"))
+        #expect(urlAction.parameters["Advanced"] == .bool(true))
+    }
+
+    @Test("Generates PUT request")
+    func generatesPUTRequest() throws {
+        let template = APIRequestTemplate()
+        let actions = try template.generate(with: [
+            "url": .url("https://api.example.com/data"),
+            "method": .choice("PUT"),
+        ])
+
+        let urlAction = actions[0].toWorkflowAction()
+        #expect(urlAction.parameters["WFHTTPMethod"] == .string("PUT"))
+    }
+
+    @Test("Generates DELETE request")
+    func generatesDELETERequest() throws {
+        let template = APIRequestTemplate()
+        let actions = try template.generate(with: [
+            "url": .url("https://api.example.com/data/123"),
+            "method": .choice("DELETE"),
+        ])
+
+        let urlAction = actions[0].toWorkflowAction()
+        #expect(urlAction.parameters["WFHTTPMethod"] == .string("DELETE"))
+    }
+
+    @Test("Generates request with authorization header")
+    func generatesRequestWithAuthHeader() throws {
+        let template = APIRequestTemplate()
+        let actions = try template.generate(with: [
+            "url": .url("https://api.example.com/data"),
+            "authHeader": .string("Bearer my-secret-token"),
+        ])
+
+        let urlAction = actions[0].toWorkflowAction()
+
+        // Check headers
+        if case .dictionary(let headers) = urlAction.parameters["WFHTTPHeaders"] {
+            #expect(headers["Authorization"] == .string("Bearer my-secret-token"))
+        } else {
+            #expect(Bool(false), "Expected headers dictionary")
+        }
+
+        #expect(urlAction.parameters["ShowHeaders"] == .bool(true))
+    }
+
+    @Test("Generates request with JSON path extraction")
+    func generatesRequestWithJSONPath() throws {
+        let template = APIRequestTemplate()
+        let actions = try template.generate(with: [
+            "url": .url("https://api.example.com/users"),
+            "jsonPath": .string("data.users"),
+        ])
+
+        // Should have 3 actions: URLAction, GetDictionaryValueAction, ShowResultAction
+        #expect(actions.count == 3)
+
+        // First action: URLAction
+        let urlAction = actions[0].toWorkflowAction()
+        #expect(urlAction.identifier == "is.workflow.actions.downloadurl")
+
+        // Second action: GetDictionaryValueAction
+        let extractAction = actions[1].toWorkflowAction()
+        #expect(extractAction.identifier == "is.workflow.actions.getvalueforkey")
+        #expect(extractAction.parameters["WFDictionaryKey"] == .string("data.users"))
+
+        // Third action: ShowResultAction
+        let showAction = actions[2].toWorkflowAction()
+        #expect(showAction.identifier == "is.workflow.actions.showresult")
+    }
+
+    @Test("Generates full API request with all options")
+    func generatesFullAPIRequest() throws {
+        let template = APIRequestTemplate()
+        let actions = try template.generate(with: [
+            "url": .url("https://api.example.com/data"),
+            "method": .choice("POST"),
+            "authHeader": .string("Basic dXNlcjpwYXNz"),
+            "jsonPath": .string("result.items"),
+        ])
+
+        // Should have 3 actions
+        #expect(actions.count == 3)
+
+        // URLAction
+        let urlAction = actions[0].toWorkflowAction()
+        #expect(urlAction.parameters["WFHTTPMethod"] == .string("POST"))
+        if case .dictionary(let headers) = urlAction.parameters["WFHTTPHeaders"] {
+            #expect(headers["Authorization"] == .string("Basic dXNlcjpwYXNz"))
+        } else {
+            #expect(Bool(false), "Expected headers dictionary")
+        }
+
+        // GetDictionaryValueAction
+        let extractAction = actions[1].toWorkflowAction()
+        #expect(extractAction.parameters["WFDictionaryKey"] == .string("result.items"))
+
+        // ShowResultAction
+        let showAction = actions[2].toWorkflowAction()
+        #expect(showAction.identifier == "is.workflow.actions.showresult")
+    }
+
+    @Test("Throws error when URL is missing")
+    func throwsErrorWhenURLMissing() {
+        let template = APIRequestTemplate()
+
+        do {
+            _ = try template.generate(with: [:])
+            #expect(Bool(false), "Should have thrown")
+        } catch let error as TemplateError {
+            #expect(error == .missingRequiredParameter(name: "url"))
+        } catch {
+            #expect(Bool(false), "Wrong error type: \(error)")
+        }
+    }
+
+    @Test("Empty auth header is ignored")
+    func emptyAuthHeaderIsIgnored() throws {
+        let template = APIRequestTemplate()
+        let actions = try template.generate(with: [
+            "url": .url("https://api.example.com/data"),
+            "authHeader": .string(""),
+        ])
+
+        let urlAction = actions[0].toWorkflowAction()
+        #expect(urlAction.parameters["WFHTTPHeaders"] == nil)
+        #expect(urlAction.parameters["ShowHeaders"] == nil)
+    }
+
+    @Test("Empty JSON path is ignored")
+    func emptyJSONPathIsIgnored() throws {
+        let template = APIRequestTemplate()
+        let actions = try template.generate(with: [
+            "url": .url("https://api.example.com/data"),
+            "jsonPath": .string(""),
+        ])
+
+        // Should only have 2 actions (no GetDictionaryValueAction)
+        #expect(actions.count == 2)
+    }
+
+    @Test("Integrates with TemplateEngine")
+    func integratesWithTemplateEngine() async throws {
+        let engine = TemplateEngine()
+        await engine.register(APIRequestTemplate.self)
+
+        // Check registration
+        #expect(await engine.isRegistered(name: "api-request"))
+
+        // Get info
+        let info = await engine.getTemplateInfo(name: "api-request")
+        #expect(info?.displayName == "API Request")
+
+        // Validate parameters
+        try await engine.validateParameters(
+            templateName: "api-request",
+            parameters: [
+                "url": .url("https://api.example.com"),
+                "method": .choice("GET"),
+            ]
+        )
+
+        // Generate actions
+        let actions = try await engine.generate(
+            templateName: "api-request",
+            parameters: [
+                "url": .url("https://api.example.com/users"),
+                "jsonPath": .string("data"),
+            ]
+        )
+        #expect(actions.count == 3)
+    }
+
+    @Test("Validates method choice parameter")
+    func validatesMethodChoice() async {
+        let engine = TemplateEngine()
+        await engine.register(APIRequestTemplate.self)
+
+        do {
+            try await engine.validateParameters(
+                templateName: "api-request",
+                parameters: [
+                    "url": .url("https://api.example.com"),
+                    "method": .choice("PATCH"),  // Not in allowed options
+                ]
+            )
+            #expect(Bool(false), "Should have thrown")
+        } catch let error as TemplateError {
+            if case .invalidChoiceValue(let name, let value, _) = error {
+                #expect(name == "method")
+                #expect(value == "PATCH")
+            } else {
+                #expect(Bool(false), "Wrong error case")
+            }
+        } catch {
+            #expect(Bool(false), "Wrong error type")
+        }
+    }
+
+    @Test("Actions have proper UUID linking")
+    func actionsHaveProperUUIDLinking() throws {
+        let template = APIRequestTemplate()
+        let actions = try template.generate(with: [
+            "url": .url("https://api.example.com/data"),
+            "jsonPath": .string("items"),
+        ])
+
+        let urlAction = actions[0].toWorkflowAction()
+        let extractAction = actions[1].toWorkflowAction()
+        let showAction = actions[2].toWorkflowAction()
+
+        // URLAction should have UUID
+        #expect(urlAction.uuid != nil)
+
+        // GetDictionaryValueAction should have UUID
+        #expect(extractAction.uuid != nil)
+
+        // ShowResultAction should reference the extract action's UUID
+        if case .dictionary(let textDict) = showAction.parameters["Text"],
+            case .dictionary(let valueDict) = textDict["Value"],
+            case .string(let outputUUID) = valueDict["OutputUUID"]
+        {
+            #expect(outputUUID == extractAction.uuid)
+        } else {
+            #expect(Bool(false), "ShowResultAction should reference extract action UUID")
+        }
+    }
+}
+
 // MARK: - Integration Tests
 
 @Suite("Template Engine Integration Tests")
@@ -762,5 +1064,229 @@ struct TemplateEngineIntegrationTests {
         #expect(actions.count == 1)
         let action = actions[0].toWorkflowAction()
         #expect(action.identifier == "is.workflow.actions.gettext")
+    }
+}
+
+// MARK: - FileDownloadTemplate Tests
+
+@Suite("FileDownloadTemplate Tests")
+struct FileDownloadTemplateTests {
+    @Test("Template has correct metadata")
+    func templateMetadata() {
+        #expect(FileDownloadTemplate.name == "file-download")
+        #expect(FileDownloadTemplate.displayName == "File Download")
+        #expect(FileDownloadTemplate.description.contains("Downloads a file"))
+        #expect(FileDownloadTemplate.parameters.count == 3)
+    }
+
+    @Test("Template parameters are defined correctly")
+    func templateParameters() {
+        let params = FileDownloadTemplate.parameters
+
+        // URL parameter
+        let urlParam = params.first { $0.name == "url" }
+        #expect(urlParam != nil)
+        #expect(urlParam?.type == .url)
+        #expect(urlParam?.required == true)
+
+        // Filename parameter
+        let filenameParam = params.first { $0.name == "filename" }
+        #expect(filenameParam != nil)
+        #expect(filenameParam?.type == .string)
+        #expect(filenameParam?.required == false)
+
+        // ShowConfirmation parameter
+        let confirmParam = params.first { $0.name == "showConfirmation" }
+        #expect(confirmParam != nil)
+        #expect(confirmParam?.type == .boolean)
+        #expect(confirmParam?.required == false)
+        #expect(confirmParam?.defaultValue == .boolean(true))
+    }
+
+    @Test("Generates actions with URL only")
+    func generatesWithURLOnly() throws {
+        let template = FileDownloadTemplate()
+        let actions = try template.generate(with: [
+            "url": .url("https://example.com/file.pdf")
+        ])
+
+        // Should have 3 actions: URLAction, SaveFileAction (ask where), ShowNotificationAction
+        #expect(actions.count == 3)
+
+        // First action should be URLAction (GET request)
+        let urlAction = actions[0].toWorkflowAction()
+        #expect(urlAction.identifier == "is.workflow.actions.downloadurl")
+        #expect(urlAction.parameters["WFURL"] == .string("https://example.com/file.pdf"))
+
+        // Second action should be SaveFileAction (ask where to save)
+        let saveAction = actions[1].toWorkflowAction()
+        #expect(saveAction.identifier == "is.workflow.actions.documentpicker.save")
+        #expect(saveAction.parameters["WFAskWhereToSave"] == .bool(true))
+
+        // Third action should be ShowNotificationAction
+        let notificationAction = actions[2].toWorkflowAction()
+        #expect(notificationAction.identifier == "is.workflow.actions.notification")
+        #expect(notificationAction.parameters["WFNotificationActionTitle"] == .string("Download Complete"))
+    }
+
+    @Test("Generates actions with filename specified")
+    func generatesWithFilename() throws {
+        let template = FileDownloadTemplate()
+        let actions = try template.generate(with: [
+            "url": .url("https://example.com/file.pdf"),
+            "filename": .string("/Downloads/myfile.pdf"),
+        ])
+
+        // Should have 3 actions: URLAction, SaveFileAction (specific path), ShowNotificationAction
+        #expect(actions.count == 3)
+
+        // Second action should be SaveFileAction with specific path
+        let saveAction = actions[1].toWorkflowAction()
+        #expect(saveAction.identifier == "is.workflow.actions.documentpicker.save")
+        #expect(saveAction.parameters["WFAskWhereToSave"] == .bool(false))
+        #expect(saveAction.parameters["WFFileDestinationPath"] == .string("/Downloads/myfile.pdf"))
+        #expect(saveAction.parameters["WFSaveFileOverwrite"] == .bool(true))
+    }
+
+    @Test("Generates actions without confirmation")
+    func generatesWithoutConfirmation() throws {
+        let template = FileDownloadTemplate()
+        let actions = try template.generate(with: [
+            "url": .url("https://example.com/file.pdf"),
+            "showConfirmation": .boolean(false),
+        ])
+
+        // Should have only 2 actions: URLAction, SaveFileAction (no notification)
+        #expect(actions.count == 2)
+
+        // Verify no notification action
+        for action in actions {
+            let workflowAction = action.toWorkflowAction()
+            #expect(workflowAction.identifier != "is.workflow.actions.notification")
+        }
+    }
+
+    @Test("Generates actions with all parameters")
+    func generatesWithAllParameters() throws {
+        let template = FileDownloadTemplate()
+        let actions = try template.generate(with: [
+            "url": .url("https://example.com/report.pdf"),
+            "filename": .string("/Reports/quarterly-report.pdf"),
+            "showConfirmation": .boolean(true),
+        ])
+
+        // Should have 3 actions
+        #expect(actions.count == 3)
+
+        // Verify all actions are present with correct identifiers
+        let urlAction = actions[0].toWorkflowAction()
+        #expect(urlAction.identifier == "is.workflow.actions.downloadurl")
+
+        let saveAction = actions[1].toWorkflowAction()
+        #expect(saveAction.identifier == "is.workflow.actions.documentpicker.save")
+        #expect(saveAction.parameters["WFFileDestinationPath"] == .string("/Reports/quarterly-report.pdf"))
+
+        let notificationAction = actions[2].toWorkflowAction()
+        #expect(notificationAction.identifier == "is.workflow.actions.notification")
+    }
+
+    @Test("Throws error when URL is missing")
+    func throwsForMissingURL() {
+        let template = FileDownloadTemplate()
+
+        do {
+            _ = try template.generate(with: [:])
+            #expect(Bool(false), "Should have thrown")
+        } catch let error as TemplateError {
+            #expect(error == .missingRequiredParameter(name: "url"))
+        } catch {
+            #expect(Bool(false), "Wrong error type: \(error)")
+        }
+    }
+
+    @Test("Registers with TemplateEngine")
+    func registersWithEngine() async {
+        let engine = TemplateEngine()
+        await engine.register(FileDownloadTemplate.self)
+
+        #expect(await engine.isRegistered(name: "file-download"))
+
+        let info = await engine.getTemplateInfo(name: "file-download")
+        #expect(info?.displayName == "File Download")
+        #expect(info?.parameters.count == 3)
+    }
+
+    @Test("Generates through TemplateEngine")
+    func generatesThroughEngine() async throws {
+        let engine = TemplateEngine()
+        await engine.register(FileDownloadTemplate.self)
+
+        let actions = try await engine.generate(
+            templateName: "file-download",
+            parameters: [
+                "url": .url("https://example.com/data.json")
+            ]
+        )
+
+        #expect(actions.count == 3)
+    }
+
+    @Test("Builds complete shortcut through TemplateEngine")
+    func buildsCompleteShortcut() async throws {
+        let engine = TemplateEngine()
+        await engine.register(FileDownloadTemplate.self)
+
+        let shortcut = try await engine.buildShortcut(
+            templateName: "file-download",
+            parameters: [
+                "url": .url("https://example.com/image.png"),
+                "filename": .string("/Pictures/downloaded-image.png"),
+            ],
+            configuration: .menuBar(name: "Download Image")
+        )
+
+        #expect(shortcut.name == "Download Image")
+        #expect(shortcut.actions.count == 3)
+        #expect(shortcut.types.contains("MenuBar"))
+    }
+
+    @Test("URLAction has correct UUID for chaining")
+    func urlActionHasUUID() throws {
+        let template = FileDownloadTemplate()
+        let actions = try template.generate(with: [
+            "url": .url("https://example.com/file.txt")
+        ])
+
+        // URLAction should have a UUID
+        let urlAction = actions[0].toWorkflowAction()
+        #expect(urlAction.uuid != nil)
+        #expect(!urlAction.uuid!.isEmpty)
+    }
+
+    @Test("SaveFileAction has correct UUID")
+    func saveFileActionHasUUID() throws {
+        let template = FileDownloadTemplate()
+        let actions = try template.generate(with: [
+            "url": .url("https://example.com/file.txt")
+        ])
+
+        // SaveFileAction should have a UUID
+        let saveAction = actions[1].toWorkflowAction()
+        #expect(saveAction.uuid != nil)
+        #expect(!saveAction.uuid!.isEmpty)
+    }
+
+    @Test("Works with string URL parameter")
+    func worksWithStringURL() throws {
+        let template = FileDownloadTemplate()
+
+        // String should be accepted for URL type (type compatibility)
+        let actions = try template.generate(with: [
+            "url": .string("https://example.com/archive.zip")
+        ])
+
+        #expect(actions.count == 3)
+        let urlAction = actions[0].toWorkflowAction()
+        #expect(urlAction.parameters["WFURL"] == .string("https://example.com/archive.zip"))
     }
 }
