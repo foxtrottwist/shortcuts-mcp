@@ -2,6 +2,11 @@
 dist
 node_modules
 
+# Swift build artifacts
+.build/
+.swiftpm/
+Package.resolved
+
 # MCPB/DXT packages and build artifacts
 *.dxt
 *.mcpb
@@ -31,3 +36,6 @@ coverage/
 # Temporary files
 temp/
 *.tmp
+
+# Claude Code iterative-dev state
+.claude/iterative-dev/
