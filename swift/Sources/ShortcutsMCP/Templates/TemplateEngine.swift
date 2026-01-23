@@ -324,5 +324,27 @@ extension TemplateEngine {
         let generator = ShortcutGenerator(configuration: configuration)
         return await generator.buildShortcut(actions: actions)
     }
+
+    /// Registers all built-in templates with the engine.
+    ///
+    /// This convenience method registers the following templates:
+    /// - `api-request`: Makes HTTP API requests with optional JSON extraction
+    /// - `file-download`: Downloads files from URLs and saves them
+    /// - `text-pipeline`: Processes text with various transformations
+    ///
+    /// ## Example Usage
+    ///
+    /// ```swift
+    /// let engine = TemplateEngine()
+    /// await engine.registerBuiltInTemplates()
+    ///
+    /// let templates = await engine.listTemplates()
+    /// // templates contains: api-request, file-download, text-pipeline
+    /// ```
+    public func registerBuiltInTemplates() {
+        register(APIRequestTemplate.self)
+        register(FileDownloadTemplate.self)
+        register(TextPipelineTemplate.self)
+    }
 }
 
