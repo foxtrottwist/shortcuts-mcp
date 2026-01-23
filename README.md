@@ -8,6 +8,8 @@ I wanted to integrate my existing automation workflows with AI assistance. Rathe
 
 ## What You Get
 
+### Base Features (TypeScript & Swift)
+
 - **Interactive Support**: File pickers, dialogs, and prompts work normally through AppleScript execution
 - **Hybrid Integration**: AppleScript for compatibility + CLI for discovery and management
 - **Permission Handling**: Location services, system integrations work with proper permission context
@@ -15,6 +17,16 @@ I wanted to integrate my existing automation workflows with AI assistance. Rathe
 - **Reliable Execution**: No hanging on permission requests or interactive elements
 - **Local Usage Tracking**: Execution history and preferences stored only on your computer
 - **Intelligent Analytics**: Automatic usage pattern analysis via MCP sampling (when supported)
+
+### Swift Version Additions
+
+- **Programmatic Shortcut Generation**: Create .shortcut files directly via the `create_shortcut` tool with action definitions
+- **Pre-built Templates**: Use templates for common patterns (Text processing, API requests, File downloads)
+- **Action Catalog**: Progressive disclosure resource showing all available actions and their parameters
+- **Shortcut Signing**: Sign generated shortcuts for distribution via `--mode anyone` or `--mode people-who-know-me`
+- **Auto-Import**: Automatically import generated shortcuts into the Shortcuts app
+- **Import Questions**: Add import-time prompts for secrets (API keys, credentials, URLs)
+- **Native Performance**: Written in Swift 6 for better performance and type safety
 
 ## Installation
 
@@ -25,9 +37,9 @@ I wanted to integrate my existing automation workflows with AI assistance. Rathe
 1. Click "Install" in the Claude Desktop UI
 1. Restart Claude Desktop
 
-### Option 2: Manual Installation
+### Option 2: Manual Installation (TypeScript)
 
-Clone and build locally for development:
+Clone and build the TypeScript version locally:
 
 ```bash
 git clone https://github.com/foxtrottwist/shortcuts-mcp.git
@@ -49,12 +61,170 @@ Add to your MCP client configuration. For Claude Desktop:
 }
 ```
 
+### Option 3: Build from Swift Source
+
+Clone and build the Swift version locally:
+
+```bash
+git clone https://github.com/foxtrottwist/shortcuts-mcp.git
+cd shortcuts-mcp/swift
+swift build -c release
+```
+
+The compiled server will be at `.build/release/shortcuts-mcp`. Add to your MCP client configuration:
+
+```json
+{
+  "mcpServers": {
+    "shortcuts-mcp": {
+      "command": "/absolute/path/to/shortcuts-mcp/swift/.build/release/shortcuts-mcp"
+    }
+  }
+}
+```
+
 ## Tested MCP Clients
 
 This server has been tested with the following MCP clients:
 
 - **[Claude Desktop](https://claude.ai/download)**
 - **[LM Studio](https://lmstudio.ai/)** - Tested with models like `gpt-oss` and `qwen3-1.7b` (manual installation only)
+
+## Tools Reference
+
+### Shortcut Execution
+
+**`run_shortcut`** - Execute an existing shortcut
+- `name` (string, required): Name of the shortcut to run
+- `input` (string, optional): Input data to pass to the shortcut
+
+Example: Run the "Get Weather" shortcut with the current location.
+
+### Shortcut Discovery
+
+**`list_shortcuts`** - Discover available shortcuts
+- `refresh` (boolean, optional): Bypass cache and fetch fresh list
+
+Returns array of shortcuts with names and identifiers. Results are cached for 24 hours.
+
+**`view_shortcut`** - Open a shortcut in the editor
+- `name` (string, required): Name of the shortcut to open
+
+Opens the shortcut in the macOS Shortcuts app for editing.
+
+### Shortcut Generation (Swift Version)
+
+**`create_shortcut`** - Create a new .shortcut file (Swift only)
+
+Two modes available:
+
+**Mode 1: From Actions**
+- `name` (string, required): Shortcut name
+- `actions` (array, required): Array of action definitions
+- `icon` (object, optional): Icon configuration {color: {red, green, blue}, glyph}
+- `sign` (boolean, optional): Sign the shortcut after creation
+- `signingMode` (choice, optional): "anyone" or "peopleWhoKnowMe"
+- `autoImport` (boolean, optional): Automatically import to Shortcuts app
+- `importQuestions` (array, optional): Import prompts for secrets
+
+Returns: `{filePath, fileSize, name, actionCount, message, signed, signedFilePath, imported}`
+
+**Mode 2: From Templates**
+- `name` (string, required): Shortcut name
+- `template` (string, required): Template name (e.g., "api-request", "text-pipeline")
+- `templateParams` (object, required): Parameters for the template
+- `sign` (boolean, optional): Sign after creation
+- `autoImport` (boolean, optional): Auto-import to Shortcuts app
+
+Example: Create a shortcut that fetches weather data from an API:
+
+```json
+{
+  "name": "weather-fetcher",
+  "template": "api-request",
+  "templateParams": {
+    "url": "https://api.weather.gov/points/40.7128,-74.0060",
+    "jsonPath": "properties.periods.0"
+  },
+  "autoImport": true
+}
+```
+
+**`list_templates`** - Discover available templates (Swift only)
+- `verbose` (boolean, optional): Show detailed parameter information
+
+Returns list of available templates with names, descriptions, and parameters.
+
+### User Profile & Tracking
+
+**`shortcuts_usage`** - Read and update user profile
+- `action` (string, required): "read" or "update"
+- `resources` (array, optional): Which resources to return ("profile", "shortcuts", "statistics")
+- `data` (object, optional): For "update", context and preferences to set
+
+## Resources Reference
+
+### Always Available
+
+**`shortcuts://available`** - Current list of shortcuts in your library
+Returns list of all shortcuts with names and identifiers.
+
+**`context://system/current`** - Current system state
+Returns timezone, time, and other system information for time-based decisions.
+
+**`context://user/profile`** - User preferences and execution patterns
+Returns projects, focus areas, favorite shortcuts, and workflow patterns.
+
+**`statistics://generated`** - Execution statistics and insights
+Returns usage patterns, success rates, timing statistics per shortcut.
+
+### Template Catalog (Swift Only)
+
+**`shortcuts://runs/{name}`** - Execution history for a specific shortcut
+Returns all execution records and timing data for a given shortcut.
+
+### Action Catalog (Swift Only)
+
+**`actions://catalog`** - Progressive disclosure action directory
+Returns category overview (text, ui, file, url, json, variable).
+
+**`actions://catalog/{category}`** - Actions in a category
+Returns action summaries with identifiers and descriptions.
+
+**`actions://catalog/{category}/{action}`** - Action parameter schema
+Returns complete parameter documentation for a specific action.
+
+Progressive disclosure design minimizes token usage while providing complete action documentation.
+
+## Templates Reference (Swift Only)
+
+### Available Templates
+
+**`api-request`** - Fetch data from an API and optionally extract JSON
+- `url` (URL, required): API endpoint
+- `method` (choice, optional): GET/POST/PUT/DELETE, default GET
+- `authHeader` (string, optional): Authorization header value
+- `jsonPath` (string, optional): Dot-notation path to extract from response
+
+**`text-pipeline`** - Apply multiple text transformations
+- `inputText` (string, required): Input text to process
+- `operations` (string, required): JSON array of transformation operations
+- `showResult` (boolean, optional): Display result, default true
+
+Operations support: `uppercase`, `lowercase`, `capitalize`, `titlecase`, `sentencecase`, `alternatingcase`, `replace`, `split`, `combine`
+
+**`file-download`** - Download a file from URL and save to disk
+- `url` (URL, required): File to download
+- `filename` (string, optional): Destination path, or prompt if not provided
+- `showConfirmation` (boolean, optional): Show download complete notification, default true
+
+## MCP Prompts
+
+**`Recommend a Shortcut`** - Get intelligent shortcut suggestions
+- `task_description` (required): What you want to accomplish
+- `context` (optional): Additional context
+
+The LLM analyzes your shortcuts library and usage history to recommend the best shortcut for your task.
 
 ## How to Use It
 
@@ -308,33 +478,30 @@ While all shortcuts work, some integrate better with AI assistant workflows:
 
 ## Development
 
-### Prerequisites
+### TypeScript Implementation
+
+The original TypeScript implementation is available in `src/`:
+
+#### Prerequisites
 
 - Node.js 22+
 - macOS with Shortcuts app
 - TypeScript knowledge for contributions
 
-### Setup
+#### Setup
 
 ```bash
-# Clone repository
-git clone https://github.com/foxtrottwist/shortcuts-mcp.git
 cd shortcuts-mcp
-
-# Install dependencies
 npm install
-
-# Development mode with hot reload
-npm run dev
-
-# Build for production
-npm run build
-
-# Build .mcpb bundle
-npm run build:mcpb
+npm run dev          # Development mode with hot reload
+npm run build        # Build for production
+npm run build:mcpb   # Build .mcpb bundle
+npm run test         # Run test suite
+npm run lint         # Linting and type checking
+npm run format       # Code formatting
 ```
 
-### Project Structure
+#### Project Structure
 
 ```
 src/
@@ -348,30 +515,89 @@ src/
 └── helpers.test.ts        # Security function tests
 ```
 
-### Core Functions
+### Swift Implementation
 
-```typescript
-// AppleScript execution with comprehensive logging
-await runShortcut(log, "Shortcut Name", "input");
+A new native Swift implementation is available in `swift/`, offering better performance and direct access to Swift ecosystem tools.
 
-// CLI discovery and management
-await listShortcuts(); // Fast shortcut enumeration
-await viewShortcut(log, "Shortcut Name"); // Editor opening
+#### Prerequisites
 
-// Security utilities
-shellEscape(userInput); // Shell injection protection
-escapeAppleScriptString(content); // AppleScript safety
-```
+- Swift 6.0+ (Xcode 16+)
+- macOS 15.0+
+- Basic Swift knowledge for contributions
 
-### Testing
-
-Comprehensive test suite with 63 tests covering AppleScript integration, user context tracking, security functions, error handling scenarios, and logging validation:
+#### Setup
 
 ```bash
-npm run test        # Run complete test suite (63 tests)
-npm run lint        # Linting and type checking
-npm run format      # Code formatting
+cd swift
+swift build              # Build debug version
+swift build -c release   # Build optimized release version
+swift run ShortcutsMCP   # Run the server directly
 ```
+
+#### Running Tests
+
+```bash
+swift test               # Run all tests
+swift test --filter TextPipelineTemplateTests  # Run specific test suite
+```
+
+#### Project Structure
+
+```
+swift/Sources/ShortcutsMCP/
+├── main.swift                           # Entry point
+├── Server/
+│   └── ShortcutsServer.swift           # MCP server wrapper
+├── Tools/
+│   ├── RunShortcutTool.swift           # Execute shortcuts
+│   ├── ListShortcutsTool.swift         # Discover available shortcuts
+│   ├── ViewShortcutTool.swift          # Open shortcut in editor
+│   ├── CreateShortcutTool.swift        # Create .shortcut files
+│   ├── ListTemplatesTool.swift         # Discover templates
+│   └── ShortcutsUsageTool.swift        # User profile and tracking
+├── Resources/
+│   ├── ShortcutsResources.swift        # MCP resources (shortcuts list, profile, stats)
+│   ├── ShortcutsPrompts.swift          # MCP prompts (recommendations)
+│   └── ActionCatalogResource.swift     # Progressive disclosure action catalog
+├── Models/
+│   ├── Shortcut.swift                  # Plist-based shortcut structure
+│   ├── WorkflowAction.swift            # Base action type
+│   ├── MagicVariable.swift             # Variable references between actions
+│   └── Actions/                        # Action implementations
+│       ├── TextAction.swift
+│       ├── ShowResultAction.swift
+│       ├── URLAction.swift
+│       ├── FileActions.swift
+│       ├── TextActions.swift
+│       ├── UIActions.swift
+│       ├── VariableActions.swift
+│       ├── JSONActions.swift
+│       └── ActionRegistry.swift        # Centralized action catalog
+├── Shortcuts/
+│   ├── ShortcutExecutor.swift          # AppleScript execution
+│   ├── ShortcutGenerator.swift         # Build .shortcut files
+│   ├── ShortcutSigner.swift            # Sign .shortcut files
+│   └── ShortcutImporter.swift          # Auto-import to Shortcuts app
+├── Templates/
+│   ├── Template.swift                  # Template protocol
+│   ├── TemplateEngine.swift            # Template registration and generation
+│   └── Definitions/
+│       ├── TextPipelineTemplate.swift
+│       ├── APIRequestTemplate.swift
+│       └── FileDownloadTemplate.swift
+├── UserProfile/
+│   └── UserProfileManager.swift        # Execution tracking and profile
+└── Utilities/
+    ├── ShellEscape.swift               # Shell injection protection
+    └── ShortcutsCache.swift            # 24-hour cache for shortcuts list
+```
+
+#### Key Swift Modules
+
+- **MCP Server**: Built on `modelcontextprotocol/swift-sdk` (v0.10.0+)
+- **Concurrency**: Actors for thread-safe shared state (ShortcutExecutor, ShortcutsCache, UserProfileManager, TemplateEngine)
+- **Plist Handling**: Native `PropertyListEncoder`/`PropertyListDecoder` for .shortcut files
+- **Shell Integration**: Process API for AppleScript and CLI commands with proper escaping
 
 ## Troubleshooting
 
