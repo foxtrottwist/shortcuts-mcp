@@ -381,4 +381,161 @@ struct ShortcutGeneratorTests {
         let expectedColor = (255 << 24) | (59 << 16) | (48 << 8) | 255
         #expect(shortcut.icon.startColor == expectedColor)
     }
+
+    // MARK: - Import Questions Tests
+
+    @Test("Configuration accepts import questions")
+    func testConfigurationWithImportQuestions() {
+        let questions = [
+            ImportQuestion(
+                actionIndex: 0,
+                parameterKey: "WFAPIKey",
+                category: "API Key",
+                defaultValue: "your-key-here",
+                text: "Enter your API key"
+            ),
+            ImportQuestion(
+                actionIndex: 1,
+                parameterKey: "WFBaseURL",
+                category: "URL",
+                text: "Enter base URL"
+            )
+        ]
+
+        let config = ShortcutGenerator.Configuration(
+            name: "API Shortcut",
+            importQuestions: questions
+        )
+
+        #expect(config.importQuestions != nil)
+        #expect(config.importQuestions?.count == 2)
+        #expect(config.importQuestions?[0].parameterKey == "WFAPIKey")
+        #expect(config.importQuestions?[1].parameterKey == "WFBaseURL")
+    }
+
+    @Test("Generator builds shortcut with import questions")
+    func testBuildShortcutWithImportQuestions() async {
+        let questions = [
+            ImportQuestion(
+                actionIndex: 0,
+                parameterKey: "AuthToken",
+                category: "Credential",
+                defaultValue: "token-placeholder",
+                text: "Enter authentication token"
+            )
+        ]
+
+        let config = ShortcutGenerator.Configuration(
+            name: "Auth Shortcut",
+            importQuestions: questions
+        )
+        let generator = ShortcutGenerator(configuration: config)
+
+        let shortcut = await generator.buildShortcut(actions: [TextAction("Test")])
+
+        #expect(shortcut.importQuestions != nil)
+        #expect(shortcut.importQuestions?.count == 1)
+        #expect(shortcut.importQuestions?[0].actionIndex == 0)
+        #expect(shortcut.importQuestions?[0].parameterKey == "AuthToken")
+        #expect(shortcut.importQuestions?[0].category == "Credential")
+        #expect(shortcut.importQuestions?[0].defaultValue == "token-placeholder")
+        #expect(shortcut.importQuestions?[0].text == "Enter authentication token")
+    }
+
+    @Test("Generated file with import questions roundtrips correctly")
+    func testImportQuestionsFileRoundtrip() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appending(
+            path: "import-questions-\(UUID().uuidString)")
+
+        let questions = [
+            ImportQuestion(
+                actionIndex: 0,
+                parameterKey: "APIKey",
+                category: "API Key",
+                text: "Enter your API key"
+            ),
+            ImportQuestion(
+                actionIndex: 2,
+                parameterKey: "SecretKey",
+                category: "Credential",
+                defaultValue: "secret-xxx",
+                text: "Enter secret key"
+            )
+        ]
+
+        let config = ShortcutGenerator.Configuration(
+            name: "Multi-Secret Shortcut",
+            importQuestions: questions
+        )
+        let generator = ShortcutGenerator(configuration: config, outputDirectory: tempDir)
+
+        let actions: [any ShortcutAction] = [
+            TextAction("API Key placeholder"),
+            TextAction("Middle action"),
+            TextAction("Secret Key placeholder"),
+            ShowResultAction.showInput()
+        ]
+
+        let result = try await generator.generate(actions: actions)
+
+        // Read and decode the file
+        let fileData = try Data(contentsOf: result.filePath)
+        let decoded = try Shortcut.decode(from: fileData)
+
+        #expect(decoded.importQuestions != nil)
+        #expect(decoded.importQuestions?.count == 2)
+
+        let first = decoded.importQuestions?[0]
+        #expect(first?.actionIndex == 0)
+        #expect(first?.parameterKey == "APIKey")
+        #expect(first?.category == "API Key")
+        #expect(first?.defaultValue == nil)
+
+        let second = decoded.importQuestions?[1]
+        #expect(second?.actionIndex == 2)
+        #expect(second?.parameterKey == "SecretKey")
+        #expect(second?.category == "Credential")
+        #expect(second?.defaultValue == "secret-xxx")
+
+        // Clean up
+        try? FileManager.default.removeItem(at: tempDir)
+    }
+
+    @Test("Generated file encodes WFWorkflowImportQuestions key")
+    func testImportQuestionsEncodedInPlist() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appending(
+            path: "import-questions-plist-\(UUID().uuidString)")
+
+        let questions = [
+            ImportQuestion(
+                actionIndex: 1,
+                parameterKey: "Password",
+                category: "Credential",
+                text: "Enter password"
+            )
+        ]
+
+        let config = ShortcutGenerator.Configuration(
+            name: "Password Shortcut",
+            importQuestions: questions
+        )
+        let generator = ShortcutGenerator(configuration: config, outputDirectory: tempDir)
+
+        let result = try await generator.generate(actions: [TextAction("Setup"), TextAction("Action")])
+
+        // Read as XML plist to verify structure
+        let fileData = try Data(contentsOf: result.filePath)
+        let decoded = try Shortcut.decode(from: fileData)
+        let xmlData = try decoded.encodeToXMLPlist()
+        let xmlString = String(data: xmlData, encoding: .utf8)!
+
+        #expect(xmlString.contains("WFWorkflowImportQuestions"))
+        #expect(xmlString.contains("ActionIndex"))
+        #expect(xmlString.contains("ParameterKey"))
+        #expect(xmlString.contains("Password"))
+        #expect(xmlString.contains("Credential"))
+
+        // Clean up
+        try? FileManager.default.removeItem(at: tempDir)
+    }
 }

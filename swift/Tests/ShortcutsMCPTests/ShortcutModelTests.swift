@@ -174,3 +174,171 @@ struct ShortcutModelTests {
         #expect(!plistData.isEmpty)
     }
 }
+
+// MARK: - ImportQuestion Tests
+
+@Suite("ImportQuestion Tests")
+struct ImportQuestionTests {
+    @Test("ImportQuestion creates with all fields")
+    func testImportQuestionCreation() {
+        let question = ImportQuestion(
+            actionIndex: 2,
+            parameterKey: "WFAPIKey",
+            category: "API Key",
+            defaultValue: "your-api-key-here",
+            text: "Enter your API key"
+        )
+
+        #expect(question.actionIndex == 2)
+        #expect(question.parameterKey == "WFAPIKey")
+        #expect(question.category == "API Key")
+        #expect(question.defaultValue == "your-api-key-here")
+        #expect(question.text == "Enter your API key")
+    }
+
+    @Test("ImportQuestion creates with minimal fields")
+    func testImportQuestionMinimal() {
+        let question = ImportQuestion(
+            actionIndex: 0,
+            parameterKey: "WFPassword"
+        )
+
+        #expect(question.actionIndex == 0)
+        #expect(question.parameterKey == "WFPassword")
+        #expect(question.category == nil)
+        #expect(question.defaultValue == nil)
+        #expect(question.text == nil)
+    }
+
+    @Test("ImportQuestion encodes to plist with correct keys")
+    func testImportQuestionEncoding() throws {
+        let question = ImportQuestion(
+            actionIndex: 1,
+            parameterKey: "WFSecretToken",
+            category: "Credential",
+            defaultValue: "default-token",
+            text: "Please enter your secret token"
+        )
+
+        let shortcut = Shortcut(
+            name: "API Shortcut",
+            actions: [
+                WorkflowAction.text("Setup"),
+                WorkflowAction.showResult("Done")
+            ],
+            importQuestions: [question]
+        )
+
+        let plistData = try shortcut.encodeToXMLPlist()
+        let plistString = String(data: plistData, encoding: .utf8)!
+
+        // Verify WFWorkflowImportQuestions is present
+        #expect(plistString.contains("WFWorkflowImportQuestions"))
+
+        // Verify ImportQuestion keys
+        #expect(plistString.contains("ActionIndex"))
+        #expect(plistString.contains("ParameterKey"))
+        #expect(plistString.contains("Category"))
+        #expect(plistString.contains("DefaultValue"))
+        #expect(plistString.contains("Text"))
+
+        // Verify values
+        #expect(plistString.contains("WFSecretToken"))
+        #expect(plistString.contains("Credential"))
+        #expect(plistString.contains("default-token"))
+        #expect(plistString.contains("Please enter your secret token"))
+    }
+
+    @Test("ImportQuestion roundtrips through plist encoding")
+    func testImportQuestionRoundtrip() throws {
+        let questions = [
+            ImportQuestion(
+                actionIndex: 0,
+                parameterKey: "APIKey",
+                category: "API Key",
+                defaultValue: "sk-xxx",
+                text: "Enter API Key"
+            ),
+            ImportQuestion(
+                actionIndex: 2,
+                parameterKey: "BaseURL",
+                category: "URL",
+                text: "Enter base URL"
+            )
+        ]
+
+        let original = Shortcut(
+            name: "Multi-Question Shortcut",
+            actions: [
+                WorkflowAction.text("Step 1"),
+                WorkflowAction.text("Step 2"),
+                WorkflowAction.showResult("Done")
+            ],
+            importQuestions: questions
+        )
+
+        // Encode and decode
+        let plistData = try original.encodeToPlist()
+        let decoded = try Shortcut.decode(from: plistData)
+
+        // Verify import questions roundtripped
+        #expect(decoded.importQuestions != nil)
+        #expect(decoded.importQuestions?.count == 2)
+
+        let first = decoded.importQuestions?[0]
+        #expect(first?.actionIndex == 0)
+        #expect(first?.parameterKey == "APIKey")
+        #expect(first?.category == "API Key")
+        #expect(first?.defaultValue == "sk-xxx")
+        #expect(first?.text == "Enter API Key")
+
+        let second = decoded.importQuestions?[1]
+        #expect(second?.actionIndex == 2)
+        #expect(second?.parameterKey == "BaseURL")
+        #expect(second?.category == "URL")
+        #expect(second?.defaultValue == nil)
+        #expect(second?.text == "Enter base URL")
+    }
+
+    @Test("Shortcut without import questions encodes correctly")
+    func testShortcutWithoutImportQuestions() throws {
+        let shortcut = Shortcut(
+            name: "Simple Shortcut",
+            actions: [WorkflowAction.showResult("Hello")]
+        )
+
+        let plistData = try shortcut.encodeToXMLPlist()
+        let plistString = String(data: plistData, encoding: .utf8)!
+
+        // WFWorkflowImportQuestions should NOT be present when nil
+        #expect(!plistString.contains("WFWorkflowImportQuestions"))
+    }
+
+    @Test("ImportQuestion common categories")
+    func testImportQuestionCategories() {
+        // Test common category values used in shortcuts
+        let apiKeyQuestion = ImportQuestion(
+            actionIndex: 0,
+            parameterKey: "WFAPIKey",
+            category: "API Key",
+            text: "Enter your API key"
+        )
+        #expect(apiKeyQuestion.category == "API Key")
+
+        let credentialQuestion = ImportQuestion(
+            actionIndex: 1,
+            parameterKey: "WFPassword",
+            category: "Credential",
+            text: "Enter password"
+        )
+        #expect(credentialQuestion.category == "Credential")
+
+        let urlQuestion = ImportQuestion(
+            actionIndex: 2,
+            parameterKey: "WFBaseURL",
+            category: "URL",
+            text: "Enter base URL"
+        )
+        #expect(urlQuestion.category == "URL")
+    }
+}
