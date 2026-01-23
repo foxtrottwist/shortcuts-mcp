@@ -1643,4 +1643,959 @@ struct ActionTests {
         let plistData = try shortcut.encodeToPlist()
         #expect(!plistData.isEmpty)
     }
+
+    // MARK: - SetVariableAction Tests
+
+    @Test("SetVariableAction creates action with variable name")
+    func testSetVariableActionBasic() throws {
+        let action = SetVariableAction("myVar")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.setvariable")
+        #expect(workflowAction.parameters["WFVariableName"] == .string("myVar"))
+        // No explicit value, uses previous action's output
+        #expect(workflowAction.parameters["WFInput"] == nil)
+    }
+
+    @Test("SetVariableAction creates action with string value")
+    func testSetVariableActionWithStringValue() throws {
+        let action = SetVariableAction("myVar", stringValue: "Hello World")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFVariableName"] == .string("myVar"))
+        #expect(workflowAction.parameters["WFInput"] == .string("Hello World"))
+    }
+
+    @Test("SetVariableAction creates action with magic variable value")
+    func testSetVariableActionWithMagicVariable() throws {
+        let attachment = TextTokenAttachment.actionOutput(uuid: "source-uuid", outputName: "Output")
+        let action = SetVariableAction("myVar", value: .attachment(attachment))
+        let workflowAction = action.toWorkflowAction()
+
+        guard case .dictionary(let dict) = workflowAction.parameters["WFInput"] else {
+            Issue.record("Expected WFInput dictionary")
+            return
+        }
+        #expect(dict["WFSerializationType"] == .string("WFTextTokenAttachment"))
+    }
+
+    @Test("SetVariableAction with UUID and custom output name")
+    func testSetVariableActionWithUUID() throws {
+        let action = SetVariableAction(
+            "myVar",
+            uuid: "setvar-uuid",
+            customOutputName: "StoredValue"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.uuid == "setvar-uuid")
+        #expect(workflowAction.customOutputName == "StoredValue")
+    }
+
+    // MARK: - GetVariableAction Tests
+
+    @Test("GetVariableAction creates action for named variable")
+    func testGetVariableActionNamed() throws {
+        let action = GetVariableAction(named: "myVar")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.getvariable")
+        guard case .dictionary(let dict) = workflowAction.parameters["WFVariable"] else {
+            Issue.record("Expected WFVariable dictionary")
+            return
+        }
+        #expect(dict["WFSerializationType"] == .string("WFTextTokenAttachment"))
+        guard case .dictionary(let valueDict) = dict["Value"] else {
+            Issue.record("Expected Value dictionary")
+            return
+        }
+        #expect(valueDict["Type"] == .string("Variable"))
+        #expect(valueDict["VariableName"] == .string("myVar"))
+    }
+
+    @Test("GetVariableAction.magicVariable creates action for action output")
+    func testGetVariableActionMagicVariable() throws {
+        let action = GetVariableAction.magicVariable(
+            actionUUID: "text-action-uuid",
+            outputName: "Text"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        guard case .dictionary(let dict) = workflowAction.parameters["WFVariable"] else {
+            Issue.record("Expected WFVariable dictionary")
+            return
+        }
+        guard case .dictionary(let valueDict) = dict["Value"] else {
+            Issue.record("Expected Value dictionary")
+            return
+        }
+        #expect(valueDict["Type"] == .string("ActionOutput"))
+        #expect(valueDict["OutputUUID"] == .string("text-action-uuid"))
+        #expect(valueDict["OutputName"] == .string("Text"))
+    }
+
+    @Test("GetVariableAction.shortcutInput creates action for shortcut input")
+    func testGetVariableActionShortcutInput() throws {
+        let action = GetVariableAction.shortcutInput()
+        let workflowAction = action.toWorkflowAction()
+
+        guard case .dictionary(let dict) = workflowAction.parameters["WFVariable"] else {
+            Issue.record("Expected WFVariable dictionary")
+            return
+        }
+        guard case .dictionary(let valueDict) = dict["Value"] else {
+            Issue.record("Expected Value dictionary")
+            return
+        }
+        #expect(valueDict["Type"] == .string("ExtensionInput"))
+    }
+
+    @Test("GetVariableAction.clipboard creates action for clipboard")
+    func testGetVariableActionClipboard() throws {
+        let action = GetVariableAction.clipboard()
+        let workflowAction = action.toWorkflowAction()
+
+        guard case .dictionary(let dict) = workflowAction.parameters["WFVariable"] else {
+            Issue.record("Expected WFVariable dictionary")
+            return
+        }
+        guard case .dictionary(let valueDict) = dict["Value"] else {
+            Issue.record("Expected Value dictionary")
+            return
+        }
+        #expect(valueDict["Type"] == .string("Clipboard"))
+    }
+
+    @Test("GetVariableAction.currentDate creates action for current date")
+    func testGetVariableActionCurrentDate() throws {
+        let action = GetVariableAction.currentDate()
+        let workflowAction = action.toWorkflowAction()
+
+        guard case .dictionary(let dict) = workflowAction.parameters["WFVariable"] else {
+            Issue.record("Expected WFVariable dictionary")
+            return
+        }
+        guard case .dictionary(let valueDict) = dict["Value"] else {
+            Issue.record("Expected Value dictionary")
+            return
+        }
+        #expect(valueDict["Type"] == .string("CurrentDate"))
+    }
+
+    @Test("GetVariableAction with UUID and custom output name")
+    func testGetVariableActionWithUUID() throws {
+        let action = GetVariableAction(
+            named: "myVar",
+            uuid: "getvar-uuid",
+            customOutputName: "RetrievedValue"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.uuid == "getvar-uuid")
+        #expect(workflowAction.customOutputName == "RetrievedValue")
+    }
+
+    // MARK: - AppendToVariableAction Tests
+
+    @Test("AppendToVariableAction creates action with variable name")
+    func testAppendToVariableActionBasic() throws {
+        let action = AppendToVariableAction("myList")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.appendvariable")
+        #expect(workflowAction.parameters["WFVariableName"] == .string("myList"))
+        // No explicit value, uses previous action's output
+        #expect(workflowAction.parameters["WFInput"] == nil)
+    }
+
+    @Test("AppendToVariableAction creates action with string value")
+    func testAppendToVariableActionWithStringValue() throws {
+        let action = AppendToVariableAction("myList", stringValue: "New Item")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFVariableName"] == .string("myList"))
+        #expect(workflowAction.parameters["WFInput"] == .string("New Item"))
+    }
+
+    @Test("AppendToVariableAction creates action with magic variable value")
+    func testAppendToVariableActionWithMagicVariable() throws {
+        let attachment = TextTokenAttachment.actionOutput(uuid: "item-uuid", outputName: "Item")
+        let action = AppendToVariableAction("myList", value: .attachment(attachment))
+        let workflowAction = action.toWorkflowAction()
+
+        guard case .dictionary(let dict) = workflowAction.parameters["WFInput"] else {
+            Issue.record("Expected WFInput dictionary")
+            return
+        }
+        #expect(dict["WFSerializationType"] == .string("WFTextTokenAttachment"))
+    }
+
+    @Test("AppendToVariableAction with UUID and custom output name")
+    func testAppendToVariableActionWithUUID() throws {
+        let action = AppendToVariableAction(
+            "myList",
+            uuid: "append-uuid",
+            customOutputName: "UpdatedList"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.uuid == "append-uuid")
+        #expect(workflowAction.customOutputName == "UpdatedList")
+    }
+
+    // MARK: - MagicVariable Tests
+
+    @Test("MagicVariable creates reference to action output")
+    func testMagicVariableBasic() throws {
+        let magicVar = MagicVariable(sourceActionUUID: "action-uuid", outputName: "Result")
+        let attachment = magicVar.toAttachment()
+
+        #expect(attachment.type == .actionOutput)
+        #expect(attachment.outputUUID == "action-uuid")
+        #expect(attachment.outputName == "Result")
+    }
+
+    @Test("MagicVariable supports property access")
+    func testMagicVariablePropertyAccess() throws {
+        let magicVar = MagicVariable(sourceActionUUID: "file-uuid", outputName: "File")
+        let nameVar = magicVar.name
+        let attachment = nameVar.toAttachment()
+
+        #expect(attachment.aggrandizements?.count == 1)
+        #expect(attachment.aggrandizements?[0].type == .property)
+        #expect(attachment.aggrandizements?[0].propertyName == "Name")
+    }
+
+    @Test("MagicVariable supports type coercion")
+    func testMagicVariableTypeCoercion() throws {
+        let magicVar = MagicVariable(sourceActionUUID: "input-uuid", outputName: "Input")
+        let textVar = magicVar.asText
+        let attachment = textVar.toAttachment()
+
+        #expect(attachment.aggrandizements?.count == 1)
+        #expect(attachment.aggrandizements?[0].type == .coercion)
+        #expect(attachment.aggrandizements?[0].coercionClass == "WFStringContentItem")
+    }
+
+    @Test("MagicVariable supports chained property access")
+    func testMagicVariableChainedAccess() throws {
+        let magicVar = MagicVariable(sourceActionUUID: "file-uuid", outputName: "File")
+        let sizeVar = magicVar.fileSize
+        let attachment = sizeVar.toAttachment()
+
+        #expect(attachment.aggrandizements?.count == 1)
+        #expect(attachment.aggrandizements?[0].propertyName == "File Size")
+    }
+
+    @Test("MagicVariable converts to TextTokenValue")
+    func testMagicVariableToTokenValue() throws {
+        let magicVar = MagicVariable(sourceActionUUID: "uuid-123", outputName: "Output")
+        let tokenValue = magicVar.toTokenValue()
+
+        guard case .attachment(let attachment) = tokenValue else {
+            Issue.record("Expected attachment token value")
+            return
+        }
+        #expect(attachment.outputUUID == "uuid-123")
+    }
+
+    // MARK: - NamedVariable Tests
+
+    @Test("NamedVariable creates reference by name")
+    func testNamedVariableBasic() throws {
+        let namedVar = NamedVariable("myVariable")
+        let attachment = namedVar.toAttachment()
+
+        #expect(attachment.type == .variable)
+        #expect(attachment.variableName == "myVariable")
+    }
+
+    @Test("NamedVariable supports property access")
+    func testNamedVariablePropertyAccess() throws {
+        let namedVar = NamedVariable("myFile")
+        let nameVar = namedVar.getName
+        let attachment = nameVar.toAttachment()
+
+        #expect(attachment.aggrandizements?.count == 1)
+        #expect(attachment.aggrandizements?[0].propertyName == "Name")
+    }
+
+    @Test("NamedVariable supports type coercion")
+    func testNamedVariableTypeCoercion() throws {
+        let namedVar = NamedVariable("myValue")
+        let numberVar = namedVar.asNumber
+        let attachment = numberVar.toAttachment()
+
+        #expect(attachment.aggrandizements?.count == 1)
+        #expect(attachment.aggrandizements?[0].coercionClass == "WFNumberContentItem")
+    }
+
+    // MARK: - Variable Builder Tests
+
+    @Test("Variable.named creates NamedVariable")
+    func testVariableBuilderNamed() throws {
+        let namedVar = Variable.named("testVar")
+
+        #expect(namedVar.name == "testVar")
+    }
+
+    @Test("Variable.magicVariable creates MagicVariable")
+    func testVariableBuilderMagicVariable() throws {
+        let magicVar = Variable.magicVariable(uuid: "action-uuid", outputName: "Result")
+
+        #expect(magicVar.sourceActionUUID == "action-uuid")
+        #expect(magicVar.outputName == "Result")
+    }
+
+    @Test("Variable.shortcutInput creates shortcut input reference")
+    func testVariableBuilderShortcutInput() throws {
+        let inputRef = Variable.shortcutInput
+
+        #expect(inputRef.type == .extensionInput)
+    }
+
+    @Test("Variable.clipboard creates clipboard reference")
+    func testVariableBuilderClipboard() throws {
+        let clipboardRef = Variable.clipboard
+
+        #expect(clipboardRef.type == .clipboard)
+    }
+
+    @Test("Variable.currentDate creates current date reference")
+    func testVariableBuilderCurrentDate() throws {
+        let dateRef = Variable.currentDate
+
+        #expect(dateRef.type == .currentDate)
+    }
+
+    @Test("Variable.ask creates ask reference")
+    func testVariableBuilderAsk() throws {
+        let askRef = Variable.ask
+
+        #expect(askRef.type == .ask)
+    }
+
+    // MARK: - ContentItemClass Constants Tests
+
+    @Test("ContentItemClass has all required constants")
+    func testContentItemClassConstants() throws {
+        #expect(ContentItemClass.string == "WFStringContentItem")
+        #expect(ContentItemClass.number == "WFNumberContentItem")
+        #expect(ContentItemClass.date == "WFDateContentItem")
+        #expect(ContentItemClass.url == "WFURLContentItem")
+        #expect(ContentItemClass.file == "WFFileContentItem")
+        #expect(ContentItemClass.image == "WFImageContentItem")
+        #expect(ContentItemClass.dictionary == "WFDictionaryContentItem")
+    }
+
+    // MARK: - PropertyName Constants Tests
+
+    @Test("PropertyName has all required constants")
+    func testPropertyNameConstants() throws {
+        #expect(PropertyName.name == "Name")
+        #expect(PropertyName.fileExtension == "File Extension")
+        #expect(PropertyName.fileSize == "File Size")
+        #expect(PropertyName.filePath == "File Path")
+        #expect(PropertyName.creationDate == "Creation Date")
+        #expect(PropertyName.lastModifiedDate == "Last Modified Date")
+    }
+
+    // MARK: - Variable Flow Integration Tests
+
+    @Test("Can create shortcut with set and get variable")
+    func testSetGetVariableShortcut() throws {
+        // Create text, set it to a variable, get the variable, show result
+        let textUUID = UUID().uuidString
+        let textAction = TextAction("Hello from variable!", uuid: textUUID)
+        let setAction = SetVariableAction("greeting")
+        let getAction = GetVariableAction(named: "greeting", uuid: UUID().uuidString)
+        let showAction = ShowResultAction(
+            fromActionWithUUID: getAction.uuid!,
+            outputName: "Variable"
+        )
+
+        let shortcut = Shortcut(
+            name: "Variable Test",
+            actions: [
+                textAction.toWorkflowAction(),
+                setAction.toWorkflowAction(),
+                getAction.toWorkflowAction(),
+                showAction.toWorkflowAction(),
+            ]
+        )
+
+        #expect(shortcut.actions.count == 4)
+        #expect(shortcut.actions[0].identifier == "is.workflow.actions.gettext")
+        #expect(shortcut.actions[1].identifier == "is.workflow.actions.setvariable")
+        #expect(shortcut.actions[2].identifier == "is.workflow.actions.getvariable")
+        #expect(shortcut.actions[3].identifier == "is.workflow.actions.showresult")
+
+        // Verify encoding works
+        let plistData = try shortcut.encodeToPlist()
+        #expect(!plistData.isEmpty)
+
+        let decoded = try Shortcut.decode(from: plistData)
+        #expect(decoded.actions.count == 4)
+    }
+
+    @Test("Can create shortcut with append to variable for list building")
+    func testAppendToVariableShortcut() throws {
+        // Build a list by appending multiple items
+        let text1UUID = UUID().uuidString
+        let text1Action = TextAction("Item 1", uuid: text1UUID)
+        let append1Action = AppendToVariableAction("myList")
+
+        let text2UUID = UUID().uuidString
+        let text2Action = TextAction("Item 2", uuid: text2UUID)
+        let append2Action = AppendToVariableAction("myList")
+
+        let getAction = GetVariableAction(named: "myList", uuid: UUID().uuidString)
+        let showAction = ShowResultAction(
+            fromActionWithUUID: getAction.uuid!,
+            outputName: "Variable"
+        )
+
+        let shortcut = Shortcut(
+            name: "List Builder",
+            actions: [
+                text1Action.toWorkflowAction(),
+                append1Action.toWorkflowAction(),
+                text2Action.toWorkflowAction(),
+                append2Action.toWorkflowAction(),
+                getAction.toWorkflowAction(),
+                showAction.toWorkflowAction(),
+            ]
+        )
+
+        #expect(shortcut.actions.count == 6)
+        #expect(shortcut.actions[1].identifier == "is.workflow.actions.appendvariable")
+        #expect(shortcut.actions[3].identifier == "is.workflow.actions.appendvariable")
+
+        // Verify encoding works
+        let plistData = try shortcut.encodeToPlist()
+        #expect(!plistData.isEmpty)
+    }
+
+    @Test("Can create shortcut with magic variable property access")
+    func testMagicVariablePropertyAccessShortcut() throws {
+        // Get a file, then get its name property
+        let fileUUID = UUID().uuidString
+        let fileAction = GetFileAction(
+            service: .iCloudDrive,
+            uuid: fileUUID,
+            customOutputName: "SelectedFile"
+        )
+
+        // Create a text action that uses the file's name property
+        let fileMagicVar = MagicVariable(sourceActionUUID: fileUUID, outputName: "SelectedFile")
+        let fileNameVar = fileMagicVar.name
+
+        let showAction = ShowResultAction(fileNameVar.toTokenValue())
+
+        let shortcut = Shortcut(
+            name: "Show File Name",
+            actions: [
+                fileAction.toWorkflowAction(),
+                showAction.toWorkflowAction(),
+            ]
+        )
+
+        #expect(shortcut.actions.count == 2)
+        #expect(shortcut.actions[0].identifier == "is.workflow.actions.documentpicker.open")
+        #expect(shortcut.actions[1].identifier == "is.workflow.actions.showresult")
+
+        // Verify the show result action references the file with a name property
+        let showWorkflowAction = shortcut.actions[1]
+        guard case .dictionary(let textDict) = showWorkflowAction.parameters["Text"] else {
+            Issue.record("Expected Text dictionary")
+            return
+        }
+
+        guard case .dictionary(let valueDict) = textDict["Value"] else {
+            Issue.record("Expected Value dictionary")
+            return
+        }
+
+        #expect(valueDict["OutputUUID"] == ActionParameterValue.string(fileUUID))
+
+        // Verify aggrandizements exist for property access
+        guard case .array(let aggrandizements) = valueDict["Aggrandizements"] else {
+            Issue.record("Expected Aggrandizements array")
+            return
+        }
+
+        #expect(aggrandizements.count == 1)
+    }
+
+    @Test("Aggrandizement encodes property access correctly")
+    func testAggrandizementPropertyEncoding() throws {
+        let aggrandizement = Aggrandizement.getProperty("File Extension")
+        let value = aggrandizement.toDictionaryValue()
+
+        guard case .dictionary(let dict) = value else {
+            Issue.record("Expected dictionary")
+            return
+        }
+
+        #expect(dict["Type"] == .string("WFPropertyVariableAggrandizement"))
+        #expect(dict["PropertyName"] == .string("File Extension"))
+    }
+
+    @Test("Aggrandizement encodes type coercion correctly")
+    func testAggrandizementCoercionEncoding() throws {
+        let aggrandizement = Aggrandizement.coerce(to: "WFStringContentItem")
+        let value = aggrandizement.toDictionaryValue()
+
+        guard case .dictionary(let dict) = value else {
+            Issue.record("Expected dictionary")
+            return
+        }
+
+        #expect(dict["Type"] == .string("WFCoercionVariableAggrandizement"))
+        #expect(dict["CoercionItemClass"] == .string("WFStringContentItem"))
+    }
+
+    // MARK: - GetDictionaryValueAction Tests
+
+    @Test("GetDictionaryValueAction creates action to get value for key")
+    func testGetDictionaryValueActionForKey() throws {
+        let action = GetDictionaryValueAction(key: "username")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.getvalueforkey")
+        #expect(workflowAction.parameters["WFGetDictionaryValueType"] == .string("Value"))
+        #expect(workflowAction.parameters["WFDictionaryKey"] == .string("username"))
+    }
+
+    @Test("GetDictionaryValueAction creates action with dot notation key path")
+    func testGetDictionaryValueActionWithDotNotation() throws {
+        let action = GetDictionaryValueAction(key: "user.address.city")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFDictionaryKey"] == .string("user.address.city"))
+    }
+
+    @Test("GetDictionaryValueAction creates action to get all keys")
+    func testGetDictionaryValueActionAllKeys() throws {
+        let action = GetDictionaryValueAction.getAllKeys()
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFGetDictionaryValueType"] == .string("All Keys"))
+        // Key should not be set for all keys mode
+        #expect(workflowAction.parameters["WFDictionaryKey"] == nil)
+    }
+
+    @Test("GetDictionaryValueAction creates action to get all values")
+    func testGetDictionaryValueActionAllValues() throws {
+        let action = GetDictionaryValueAction.getAllValues()
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFGetDictionaryValueType"] == .string("All Values"))
+        // Key should not be set for all values mode
+        #expect(workflowAction.parameters["WFDictionaryKey"] == nil)
+    }
+
+    @Test("GetDictionaryValueAction supports variable key")
+    func testGetDictionaryValueActionWithVariableKey() throws {
+        let attachment = TextTokenAttachment.actionOutput(uuid: "key-uuid", outputName: "Key")
+        let action = GetDictionaryValueAction(key: .attachment(attachment))
+        let workflowAction = action.toWorkflowAction()
+
+        guard case .dictionary(let dict) = workflowAction.parameters["WFDictionaryKey"] else {
+            Issue.record("Expected WFDictionaryKey dictionary")
+            return
+        }
+        #expect(dict["WFSerializationType"] == .string("WFTextTokenAttachment"))
+    }
+
+    @Test("GetDictionaryValueAction with UUID and custom output name")
+    func testGetDictionaryValueActionWithUUID() throws {
+        let action = GetDictionaryValueAction(
+            key: "value",
+            uuid: "dict-uuid",
+            customOutputName: "ExtractedValue"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.uuid == "dict-uuid")
+        #expect(workflowAction.customOutputName == "ExtractedValue")
+    }
+
+    @Test("GetDictionaryValueAction convenience method getValue")
+    func testGetDictionaryValueActionGetValue() throws {
+        let action = GetDictionaryValueAction.getValue(forKey: "name")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFGetDictionaryValueType"] == .string("Value"))
+        #expect(workflowAction.parameters["WFDictionaryKey"] == .string("name"))
+    }
+
+    @Test("DictionaryValueType has all required cases")
+    func testDictionaryValueTypeCases() throws {
+        let types = DictionaryValueType.allCases
+        #expect(types.count == 3)
+        #expect(types.contains(.value))
+        #expect(types.contains(.allKeys))
+        #expect(types.contains(.allValues))
+    }
+
+    // MARK: - SetDictionaryValueAction Tests
+
+    @Test("SetDictionaryValueAction creates action with plain strings")
+    func testSetDictionaryValueActionPlainStrings() throws {
+        let action = SetDictionaryValueAction(key: "name", value: "John Doe")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.setvalueforkey")
+        #expect(workflowAction.parameters["WFDictionaryKey"] == .string("name"))
+        #expect(workflowAction.parameters["WFDictionaryValue"] == .string("John Doe"))
+    }
+
+    @Test("SetDictionaryValueAction supports variable key")
+    func testSetDictionaryValueActionWithVariableKey() throws {
+        let keyAttachment = TextTokenAttachment.actionOutput(uuid: "key-uuid", outputName: "Key")
+        let action = SetDictionaryValueAction(
+            key: .attachment(keyAttachment),
+            value: .string("value")
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        guard case .dictionary(let dict) = workflowAction.parameters["WFDictionaryKey"] else {
+            Issue.record("Expected WFDictionaryKey dictionary")
+            return
+        }
+        #expect(dict["WFSerializationType"] == .string("WFTextTokenAttachment"))
+    }
+
+    @Test("SetDictionaryValueAction supports variable value")
+    func testSetDictionaryValueActionWithVariableValue() throws {
+        let valueAttachment = TextTokenAttachment.actionOutput(uuid: "value-uuid", outputName: "Value")
+        let action = SetDictionaryValueAction(
+            key: .string("myKey"),
+            value: .attachment(valueAttachment)
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        guard case .dictionary(let dict) = workflowAction.parameters["WFDictionaryValue"] else {
+            Issue.record("Expected WFDictionaryValue dictionary")
+            return
+        }
+        #expect(dict["WFSerializationType"] == .string("WFTextTokenAttachment"))
+    }
+
+    @Test("SetDictionaryValueAction with UUID and custom output name")
+    func testSetDictionaryValueActionWithUUID() throws {
+        let action = SetDictionaryValueAction(
+            key: "key",
+            value: "value",
+            uuid: "setdict-uuid",
+            customOutputName: "UpdatedDict"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.uuid == "setdict-uuid")
+        #expect(workflowAction.customOutputName == "UpdatedDict")
+    }
+
+    // MARK: - GetItemFromListAction Tests
+
+    @Test("GetItemFromListAction creates action to get first item")
+    func testGetItemFromListActionFirstItem() throws {
+        let action = GetItemFromListAction(specifier: .firstItem)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.getitemfromlist")
+        #expect(workflowAction.parameters["WFItemSpecifier"] == .string("First Item"))
+    }
+
+    @Test("GetItemFromListAction creates action to get last item")
+    func testGetItemFromListActionLastItem() throws {
+        let action = GetItemFromListAction.lastItem()
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFItemSpecifier"] == .string("Last Item"))
+    }
+
+    @Test("GetItemFromListAction creates action to get random item")
+    func testGetItemFromListActionRandomItem() throws {
+        let action = GetItemFromListAction.randomItem()
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFItemSpecifier"] == .string("Random Item"))
+    }
+
+    @Test("GetItemFromListAction creates action to get item at index")
+    func testGetItemFromListActionAtIndex() throws {
+        let action = GetItemFromListAction.itemAtIndex(3)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFItemSpecifier"] == .string("Item At Index"))
+        #expect(workflowAction.parameters["WFItemIndex"] == .int(3))
+    }
+
+    @Test("GetItemFromListAction creates action to get items in range")
+    func testGetItemFromListActionRange() throws {
+        let action = GetItemFromListAction.itemsInRange(from: 2, to: 5)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFItemSpecifier"] == .string("Items in Range"))
+        #expect(workflowAction.parameters["WFItemRangeStart"] == .int(2))
+        #expect(workflowAction.parameters["WFItemRangeEnd"] == .int(5))
+    }
+
+    @Test("GetItemFromListAction with UUID and custom output name")
+    func testGetItemFromListActionWithUUID() throws {
+        let action = GetItemFromListAction(
+            specifier: .firstItem,
+            uuid: "list-uuid",
+            customOutputName: "FirstItem"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.uuid == "list-uuid")
+        #expect(workflowAction.customOutputName == "FirstItem")
+    }
+
+    @Test("ListItemSpecifier has correct raw values")
+    func testListItemSpecifierRawValues() throws {
+        #expect(ListItemSpecifier.firstItem.rawValue == "First Item")
+        #expect(ListItemSpecifier.lastItem.rawValue == "Last Item")
+        #expect(ListItemSpecifier.randomItem.rawValue == "Random Item")
+        #expect(ListItemSpecifier.itemAtIndex(1).rawValue == "Item At Index")
+        #expect(ListItemSpecifier.itemsInRange(start: 1, end: 3).rawValue == "Items in Range")
+    }
+
+    // MARK: - DictionaryAction Tests
+
+    @Test("DictionaryAction creates action with string items")
+    func testDictionaryActionWithStringItems() throws {
+        let action = DictionaryAction(stringItems: [
+            "name": "John",
+            "city": "Boston",
+        ])
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.dictionary")
+        guard case .dictionary(let wfItems) = workflowAction.parameters["WFItems"] else {
+            Issue.record("Expected WFItems dictionary")
+            return
+        }
+        #expect(wfItems["WFSerializationType"] == .string("WFDictionaryFieldValue"))
+    }
+
+    @Test("DictionaryAction creates action with mixed value types")
+    func testDictionaryActionWithMixedTypes() throws {
+        let action = DictionaryAction(items: [
+            "name": .string("John"),
+            "age": .int(30),
+            "active": .bool(true),
+        ])
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.dictionary")
+        guard case .dictionary(let wfItems) = workflowAction.parameters["WFItems"] else {
+            Issue.record("Expected WFItems dictionary")
+            return
+        }
+        guard case .dictionary(let valueDict) = wfItems["Value"] else {
+            Issue.record("Expected Value dictionary")
+            return
+        }
+        guard case .array(let fieldItems) = valueDict["WFDictionaryFieldValueItems"] else {
+            Issue.record("Expected WFDictionaryFieldValueItems array")
+            return
+        }
+        #expect(fieldItems.count == 3)
+    }
+
+    @Test("DictionaryAction.empty creates empty dictionary")
+    func testDictionaryActionEmpty() throws {
+        let action = DictionaryAction.empty()
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.dictionary")
+        guard case .dictionary(let wfItems) = workflowAction.parameters["WFItems"] else {
+            Issue.record("Expected WFItems dictionary")
+            return
+        }
+        guard case .dictionary(let valueDict) = wfItems["Value"] else {
+            Issue.record("Expected Value dictionary")
+            return
+        }
+        guard case .array(let fieldItems) = valueDict["WFDictionaryFieldValueItems"] else {
+            Issue.record("Expected WFDictionaryFieldValueItems array")
+            return
+        }
+        #expect(fieldItems.isEmpty)
+    }
+
+    @Test("DictionaryAction.from creates dictionary from pairs")
+    func testDictionaryActionFrom() throws {
+        let action = DictionaryAction.from([
+            ("key1", .string("value1")),
+            ("key2", .int(42)),
+        ])
+        let workflowAction = action.toWorkflowAction()
+
+        guard case .dictionary(let wfItems) = workflowAction.parameters["WFItems"] else {
+            Issue.record("Expected WFItems dictionary")
+            return
+        }
+        guard case .dictionary(let valueDict) = wfItems["Value"] else {
+            Issue.record("Expected Value dictionary")
+            return
+        }
+        guard case .array(let fieldItems) = valueDict["WFDictionaryFieldValueItems"] else {
+            Issue.record("Expected WFDictionaryFieldValueItems array")
+            return
+        }
+        #expect(fieldItems.count == 2)
+    }
+
+    @Test("DictionaryAction with UUID and custom output name")
+    func testDictionaryActionWithUUID() throws {
+        let action = DictionaryAction(
+            stringItems: ["key": "value"],
+            uuid: "dict-create-uuid",
+            customOutputName: "MyDictionary"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.uuid == "dict-create-uuid")
+        #expect(workflowAction.customOutputName == "MyDictionary")
+    }
+
+    // MARK: - JSON Actions Integration Tests
+
+    @Test("Can create shortcut to parse JSON and extract value")
+    func testJSONParsingShortcut() throws {
+        // Fetch JSON from URL, get a specific value, show result
+        let urlUUID = UUID().uuidString
+        let urlAction = URLAction(
+            "https://api.example.com/user",
+            uuid: urlUUID,
+            customOutputName: "Response"
+        )
+
+        let getValue = GetDictionaryValueAction(
+            key: "user.name",
+            uuid: UUID().uuidString,
+            customOutputName: "UserName"
+        )
+
+        let showAction = ShowResultAction(
+            fromActionWithUUID: getValue.uuid!,
+            outputName: "UserName"
+        )
+
+        let shortcut = Shortcut(
+            name: "Get User Name",
+            actions: [
+                urlAction.toWorkflowAction(),
+                getValue.toWorkflowAction(),
+                showAction.toWorkflowAction(),
+            ]
+        )
+
+        #expect(shortcut.actions.count == 3)
+        #expect(shortcut.actions[0].identifier == "is.workflow.actions.downloadurl")
+        #expect(shortcut.actions[1].identifier == "is.workflow.actions.getvalueforkey")
+        #expect(shortcut.actions[2].identifier == "is.workflow.actions.showresult")
+
+        // Verify encoding works
+        let plistData = try shortcut.encodeToPlist()
+        #expect(!plistData.isEmpty)
+
+        let decoded = try Shortcut.decode(from: plistData)
+        #expect(decoded.actions.count == 3)
+    }
+
+    @Test("Can create shortcut to build and modify dictionary")
+    func testDictionaryBuildingShortcut() throws {
+        // Create dictionary, set a value, get all keys, show result
+        let dictUUID = UUID().uuidString
+        let dictAction = DictionaryAction(
+            stringItems: [
+                "name": "John",
+                "email": "john@example.com",
+            ],
+            uuid: dictUUID,
+            customOutputName: "UserData"
+        )
+
+        let setValueUUID = UUID().uuidString
+        let setValueAction = SetDictionaryValueAction(
+            key: "phone",
+            value: "555-1234",
+            uuid: setValueUUID,
+            customOutputName: "UpdatedData"
+        )
+
+        let getKeysAction = GetDictionaryValueAction.getAllKeys(uuid: UUID().uuidString)
+
+        let showAction = ShowResultAction(
+            fromActionWithUUID: getKeysAction.uuid!,
+            outputName: "Dictionary Value"
+        )
+
+        let shortcut = Shortcut(
+            name: "Dictionary Operations",
+            actions: [
+                dictAction.toWorkflowAction(),
+                setValueAction.toWorkflowAction(),
+                getKeysAction.toWorkflowAction(),
+                showAction.toWorkflowAction(),
+            ]
+        )
+
+        #expect(shortcut.actions.count == 4)
+        #expect(shortcut.actions[0].identifier == "is.workflow.actions.dictionary")
+        #expect(shortcut.actions[1].identifier == "is.workflow.actions.setvalueforkey")
+        #expect(shortcut.actions[2].identifier == "is.workflow.actions.getvalueforkey")
+        #expect(shortcut.actions[3].identifier == "is.workflow.actions.showresult")
+
+        // Verify encoding works
+        let plistData = try shortcut.encodeToPlist()
+        #expect(!plistData.isEmpty)
+    }
+
+    @Test("Can create shortcut to process list items")
+    func testListProcessingShortcut() throws {
+        // Split text into list, get first item, get item at index, show results
+        let textUUID = UUID().uuidString
+        let textAction = TextAction(
+            "apple,banana,cherry,date",
+            uuid: textUUID,
+            customOutputName: "FruitList"
+        )
+
+        let splitAction = SplitTextAction(
+            customSeparator: ",",
+            uuid: UUID().uuidString,
+            customOutputName: "Items"
+        )
+
+        let firstItemAction = GetItemFromListAction.firstItem(uuid: UUID().uuidString)
+        let thirdItemAction = GetItemFromListAction.itemAtIndex(3, uuid: UUID().uuidString)
+
+        let shortcut = Shortcut(
+            name: "List Processing",
+            actions: [
+                textAction.toWorkflowAction(),
+                splitAction.toWorkflowAction(),
+                firstItemAction.toWorkflowAction(),
+                thirdItemAction.toWorkflowAction(),
+            ]
+        )
+
+        #expect(shortcut.actions.count == 4)
+        #expect(shortcut.actions[0].identifier == "is.workflow.actions.gettext")
+        #expect(shortcut.actions[1].identifier == "is.workflow.actions.text.split")
+        #expect(shortcut.actions[2].identifier == "is.workflow.actions.getitemfromlist")
+        #expect(shortcut.actions[3].identifier == "is.workflow.actions.getitemfromlist")
+
+        // Verify encoding works
+        let plistData = try shortcut.encodeToPlist()
+        #expect(!plistData.isEmpty)
+    }
 }
