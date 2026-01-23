@@ -101,9 +101,12 @@ public actor ShortcutsServer {
                 throw MCPError.internalError("Server was deallocated")
             }
 
-            // TODO: Return actual tools in future iterations
-            // For now, return empty list to validate handler works
-            return ListTools.Result(tools: [])
+            // Return all registered tools
+            return ListTools.Result(tools: [
+                RunShortcutTool.definition,
+                ListShortcutsTool.definition,
+                ViewShortcutTool.definition
+            ])
         }
 
         // Register tools/call handler
@@ -112,8 +115,21 @@ public actor ShortcutsServer {
                 throw MCPError.internalError("Server was deallocated")
             }
 
-            // TODO: Implement actual tool dispatch in future iterations
-            throw MCPError.invalidParams("Unknown tool: \(params.name)")
+            // Dispatch to appropriate tool handler
+            switch params.name {
+            case RunShortcutTool.name:
+                let input = try RunShortcutTool.parseInput(from: params)
+                return try await RunShortcutTool.execute(input: input)
+
+            case ListShortcutsTool.name:
+                return try await ListShortcutsTool.execute(arguments: params.arguments)
+
+            case ViewShortcutTool.name:
+                return try await ViewShortcutTool.execute(arguments: params.arguments)
+
+            default:
+                throw MCPError.invalidParams("Unknown tool: \(params.name)")
+            }
         }
     }
 
