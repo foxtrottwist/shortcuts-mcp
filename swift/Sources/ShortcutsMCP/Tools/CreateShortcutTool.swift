@@ -97,6 +97,49 @@ public struct CreateShortcutTool {
                                 "SF Symbol glyph number (defaults to 59771 magic wand)"
                         ])
                     ])
+                ]),
+                "sign": .object([
+                    "type": "boolean",
+                    "description": "Whether to sign the shortcut after creation (default: false). Signing is required for import."
+                ]),
+                "signingMode": .object([
+                    "type": "string",
+                    "enum": .array([.string("anyone"), .string("peopleWhoKnowMe")]),
+                    "description": "Signing mode - 'anyone' allows anyone to import, 'peopleWhoKnowMe' restricts to contacts (default: anyone)"
+                ]),
+                "autoImport": .object([
+                    "type": "boolean",
+                    "description": "Whether to automatically open the signed shortcut in the Shortcuts app for import (default: false). Requires sign=true."
+                ]),
+                "importQuestions": .object([
+                    "type": "array",
+                    "description": "Questions to prompt the user when importing the shortcut (e.g., for API keys or credentials)",
+                    "items": .object([
+                        "type": "object",
+                        "properties": .object([
+                            "actionIndex": .object([
+                                "type": "integer",
+                                "description": "Index of the action this question applies to (0-based)"
+                            ]),
+                            "parameterKey": .object([
+                                "type": "string",
+                                "description": "The parameter key in the action (e.g., 'WFAPIKey')"
+                            ]),
+                            "category": .object([
+                                "type": "string",
+                                "description": "Category of the question (e.g., 'API Key', 'Credential', 'URL')"
+                            ]),
+                            "defaultValue": .object([
+                                "type": "string",
+                                "description": "Default value for the parameter"
+                            ]),
+                            "text": .object([
+                                "type": "string",
+                                "description": "Display text for the question prompt"
+                            ])
+                        ]),
+                        "required": .array([.string("actionIndex"), .string("parameterKey")])
+                    ])
                 ])
             ]),
             "required": .array([.string("name")])
@@ -125,17 +168,37 @@ public struct CreateShortcutTool {
         /// Optional icon configuration
         public let icon: IconConfiguration?
 
+        /// Whether to sign the shortcut after creation
+        public let sign: Bool
+
+        /// Signing mode (anyone or peopleWhoKnowMe)
+        public let signingMode: ShortcutSigner.SigningMode
+
+        /// Whether to auto-import the shortcut into the Shortcuts app
+        public let autoImport: Bool
+
+        /// Import questions for user prompts when importing
+        public let importQuestions: [ImportQuestion]?
+
         /// Creates input for actions mode
         public init(
             name: String,
             actions: [ActionDefinition],
-            icon: IconConfiguration? = nil
+            icon: IconConfiguration? = nil,
+            sign: Bool = false,
+            signingMode: ShortcutSigner.SigningMode = .anyone,
+            autoImport: Bool = false,
+            importQuestions: [ImportQuestion]? = nil
         ) {
             self.name = name
             self.actions = actions
             self.template = nil
             self.templateParams = nil
             self.icon = icon
+            self.sign = sign
+            self.signingMode = signingMode
+            self.autoImport = autoImport
+            self.importQuestions = importQuestions
         }
 
         /// Creates input for template mode
@@ -143,13 +206,21 @@ public struct CreateShortcutTool {
             name: String,
             template: String,
             templateParams: [String: TemplateParameterValue] = [:],
-            icon: IconConfiguration? = nil
+            icon: IconConfiguration? = nil,
+            sign: Bool = false,
+            signingMode: ShortcutSigner.SigningMode = .anyone,
+            autoImport: Bool = false,
+            importQuestions: [ImportQuestion]? = nil
         ) {
             self.name = name
             self.actions = nil
             self.template = template
             self.templateParams = templateParams
             self.icon = icon
+            self.sign = sign
+            self.signingMode = signingMode
+            self.autoImport = autoImport
+            self.importQuestions = importQuestions
         }
 
         /// Determines the creation mode
@@ -257,10 +328,11 @@ public struct CreateShortcutTool {
         // Build icon configuration
         let icon = input.icon?.toWorkflowIcon() ?? .default
 
-        // Create generator configuration
+        // Create generator configuration with import questions
         let configuration = ShortcutGenerator.Configuration(
             name: input.name,
-            icon: icon
+            icon: icon,
+            importQuestions: input.importQuestions
         )
 
         // Create generator
@@ -274,15 +346,76 @@ public struct CreateShortcutTool {
             let result = try await generator.generate(workflowActions: workflowActions)
 
             // Build response
-            let response: [String: Any] = [
+            var response: [String: Any] = [
                 "filePath": result.filePath.path,
                 "fileSize": result.fileSize,
                 "name": input.name,
                 "actionCount": actions.count,
-                "mode": "actions",
-                "message":
-                    "Shortcut '\(input.name)' created successfully. Sign with: shortcuts sign --mode anyone --input \"\(result.filePath.path)\" --output signed.shortcut"
+                "mode": "actions"
             ]
+
+            // Handle signing if requested
+            var signedFilePath: String?
+            if input.sign {
+                do {
+                    let signer = ShortcutSigner.shared
+                    let signedURL = try await signer.sign(
+                        input: result.filePath,
+                        mode: input.signingMode
+                    )
+                    signedFilePath = signedURL.path
+                    response["signedFilePath"] = signedURL.path
+                    response["signed"] = true
+                } catch {
+                    return CallTool.Result(
+                        content: [.text("Error signing shortcut: \(error.localizedDescription)")],
+                        isError: true
+                    )
+                }
+            } else {
+                response["signed"] = false
+            }
+
+            // Handle auto-import if requested
+            if input.autoImport {
+                if !input.sign {
+                    return CallTool.Result(
+                        content: [.text("Error: autoImport requires sign=true (shortcuts must be signed before import)")],
+                        isError: true
+                    )
+                }
+
+                if let signedPath = signedFilePath {
+                    let importer = ShortcutImporter.shared
+                    let importResult = await importer.importShortcut(
+                        atPath: signedPath,
+                        signFirst: false, // Already signed
+                        cleanup: false
+                    )
+
+                    response["imported"] = importResult.isSuccess
+                    if !importResult.isSuccess {
+                        response["importError"] = importResult.errorMessage
+                    }
+                } else {
+                    response["imported"] = false
+                    response["importError"] = "No signed file available for import"
+                }
+            } else {
+                response["imported"] = false
+            }
+
+            // Build message based on what was done
+            var message = "Shortcut '\(input.name)' created successfully."
+            if input.sign, let signedPath = signedFilePath {
+                message += " Signed file: \(signedPath)"
+            } else {
+                message += " Sign with: shortcuts sign --mode anyone --input \"\(result.filePath.path)\" --output signed.shortcut"
+            }
+            if input.autoImport, let imported = response["imported"] as? Bool, imported {
+                message += " Import triggered - check Shortcuts app."
+            }
+            response["message"] = message
 
             let jsonData = try JSONSerialization.data(withJSONObject: response)
             let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
@@ -333,10 +466,11 @@ public struct CreateShortcutTool {
         // Build icon configuration
         let icon = input.icon?.toWorkflowIcon() ?? .default
 
-        // Create generator configuration
+        // Create generator configuration with import questions
         let configuration = ShortcutGenerator.Configuration(
             name: input.name,
-            icon: icon
+            icon: icon,
+            importQuestions: input.importQuestions
         )
 
         do {
@@ -349,16 +483,77 @@ public struct CreateShortcutTool {
             )
 
             // Build response
-            let response: [String: Any] = [
+            var response: [String: Any] = [
                 "filePath": result.filePath.path,
                 "fileSize": result.fileSize,
                 "name": input.name,
                 "actionCount": result.shortcut.actions.count,
                 "mode": "template",
-                "template": templateName,
-                "message":
-                    "Shortcut '\(input.name)' created from template '\(templateName)'. Sign with: shortcuts sign --mode anyone --input \"\(result.filePath.path)\" --output signed.shortcut"
+                "template": templateName
             ]
+
+            // Handle signing if requested
+            var signedFilePath: String?
+            if input.sign {
+                do {
+                    let signer = ShortcutSigner.shared
+                    let signedURL = try await signer.sign(
+                        input: result.filePath,
+                        mode: input.signingMode
+                    )
+                    signedFilePath = signedURL.path
+                    response["signedFilePath"] = signedURL.path
+                    response["signed"] = true
+                } catch {
+                    return CallTool.Result(
+                        content: [.text("Error signing shortcut: \(error.localizedDescription)")],
+                        isError: true
+                    )
+                }
+            } else {
+                response["signed"] = false
+            }
+
+            // Handle auto-import if requested
+            if input.autoImport {
+                if !input.sign {
+                    return CallTool.Result(
+                        content: [.text("Error: autoImport requires sign=true (shortcuts must be signed before import)")],
+                        isError: true
+                    )
+                }
+
+                if let signedPath = signedFilePath {
+                    let importer = ShortcutImporter.shared
+                    let importResult = await importer.importShortcut(
+                        atPath: signedPath,
+                        signFirst: false, // Already signed
+                        cleanup: false
+                    )
+
+                    response["imported"] = importResult.isSuccess
+                    if !importResult.isSuccess {
+                        response["importError"] = importResult.errorMessage
+                    }
+                } else {
+                    response["imported"] = false
+                    response["importError"] = "No signed file available for import"
+                }
+            } else {
+                response["imported"] = false
+            }
+
+            // Build message based on what was done
+            var message = "Shortcut '\(input.name)' created from template '\(templateName)'."
+            if input.sign, let signedPath = signedFilePath {
+                message += " Signed file: \(signedPath)"
+            } else {
+                message += " Sign with: shortcuts sign --mode anyone --input \"\(result.filePath.path)\" --output signed.shortcut"
+            }
+            if input.autoImport, let imported = response["imported"] as? Bool, imported {
+                message += " Import triggered - check Shortcuts app."
+            }
+            response["message"] = message
 
             let jsonData = try JSONSerialization.data(withJSONObject: response)
             let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
@@ -408,6 +603,30 @@ public struct CreateShortcutTool {
             icon = try parseIcon(iconDict)
         }
 
+        // Parse signing options
+        let sign = arguments["sign"]?.boolValue ?? false
+        let signingMode: ShortcutSigner.SigningMode
+        if let modeStr = arguments["signingMode"]?.stringValue {
+            switch modeStr {
+            case "peopleWhoKnowMe":
+                signingMode = .peopleWhoKnowMe
+            default:
+                signingMode = .anyone
+            }
+        } else {
+            signingMode = .anyone
+        }
+
+        // Parse auto-import option
+        let autoImport = arguments["autoImport"]?.boolValue ?? false
+
+        // Parse import questions
+        var importQuestions: [ImportQuestion]?
+        if let questionsValue = arguments["importQuestions"],
+           let questionsArray = questionsValue.arrayValue {
+            importQuestions = try parseImportQuestions(questionsArray)
+        }
+
         // Check if template mode or actions mode
         let hasTemplate = arguments["template"]?.stringValue != nil
         let hasActions = arguments["actions"]?.arrayValue != nil
@@ -432,7 +651,16 @@ public struct CreateShortcutTool {
                 templateParams = try parseTemplateParameters(paramsDict)
             }
 
-            return Input(name: name, template: template, templateParams: templateParams, icon: icon)
+            return Input(
+                name: name,
+                template: template,
+                templateParams: templateParams,
+                icon: icon,
+                sign: sign,
+                signingMode: signingMode,
+                autoImport: autoImport,
+                importQuestions: importQuestions
+            )
         } else {
             // Actions mode (original behavior)
             guard let actionsValue = arguments["actions"], let actionsArray = actionsValue.arrayValue
@@ -479,8 +707,49 @@ public struct CreateShortcutTool {
                     ))
             }
 
-            return Input(name: name, actions: actions, icon: icon)
+            return Input(
+                name: name,
+                actions: actions,
+                icon: icon,
+                sign: sign,
+                signingMode: signingMode,
+                autoImport: autoImport,
+                importQuestions: importQuestions
+            )
         }
+    }
+
+    /// Parse import questions from JSON array
+    private static func parseImportQuestions(_ array: [Value]) throws -> [ImportQuestion] {
+        var questions: [ImportQuestion] = []
+        for (index, value) in array.enumerated() {
+            guard let dict = value.objectValue else {
+                throw MCPError.invalidParams("Import question at index \(index) must be an object")
+            }
+
+            guard let actionIndexValue = dict["actionIndex"],
+                  let actionIndex = actionIndexValue.intValue else {
+                throw MCPError.invalidParams("Import question at index \(index) missing required 'actionIndex'")
+            }
+
+            guard let parameterKeyValue = dict["parameterKey"],
+                  let parameterKey = parameterKeyValue.stringValue else {
+                throw MCPError.invalidParams("Import question at index \(index) missing required 'parameterKey'")
+            }
+
+            let category = dict["category"]?.stringValue
+            let defaultValue = dict["defaultValue"]?.stringValue
+            let text = dict["text"]?.stringValue
+
+            questions.append(ImportQuestion(
+                actionIndex: actionIndex,
+                parameterKey: parameterKey,
+                category: category,
+                defaultValue: defaultValue,
+                text: text
+            ))
+        }
+        return questions
     }
 
     /// Parse template parameters from JSON Value to TemplateParameterValue
