@@ -8,35 +8,17 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+
 jobs:
   test:
-    name: Test Changes
-    strategy:
-      fail-fast: true
-      matrix:
-        node:
-          - 22
-    runs-on: ubuntu-latest
+    name: Test Swift Changes
+    runs-on: macos-15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Setup Node.js ${{ matrix.node }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run lint
-        run: npm run lint
+      - name: Build Swift
+        run: cd swift && swift build
 
       - name: Run tests
-        run: npm run test
-
-      - name: Build
-        run: npm run build
+        run: cd swift && swift test

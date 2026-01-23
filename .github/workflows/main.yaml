@@ -1,41 +1,67 @@
 name: Build and Release
+
 on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
+
 jobs:
-  test-and-release:
-    name: Test, Build, and Release
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
+  test:
+    name: Test
+    runs-on: macos-15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+
+      - name: Build Swift
+        run: cd swift && swift build
+
+      - name: Run tests
+        run: cd swift && swift test
+
+  release:
+    name: Build and Release
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: macos-15
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Update manifest version
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          sed -i '' "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" manifest.json
+
+      - name: Build Swift release binary
+        run: cd swift && swift build -c release
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: "npm"
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Create MCPB bundle
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          mkdir -p temp-mcpb-build/server
+          cp manifest.json temp-mcpb-build/
+          cp swift/.build/release/ShortcutsMCP temp-mcpb-build/server/
+          npx @anthropic-ai/mcpb pack temp-mcpb-build shortcuts-mcp-${VERSION}.mcpb
+          rm -rf temp-mcpb-build
 
-      - name: Run lint
-        run: npm run lint
-
-      - name: Run tests
-        run: npm run test
-
-      - name: Build project
-        run: npm run build
-
-      - name: Semantic Release
-        run: npx semantic-release
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: shortcuts-mcp-*.mcpb
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

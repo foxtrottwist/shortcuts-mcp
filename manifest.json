@@ -1,10 +1,10 @@
 {
-  "manifest_version": "0.1",
+  "manifest_version": "0.2",
   "name": "shortcuts-mcp",
   "display_name": "Shortcuts",
   "version": "3.0.0",
-  "description": "TypeScript MCP server for macOS Shortcuts automation.",
-  "long_description": "Enables Claude to **execute and manage macOS Shortcuts** through a hybrid AppleScript + CLI approach, providing:\n\n- **Interactive shortcut support** with file pickers, dialogs, and prompts\n- **Reliable permission handling** for location services and system integrations\n- **Comprehensive user context tracking** with execution history and preferences\n- **AI-enhanced workflow recommendations** based on available shortcuts\n\nTransform Claude into your Mac power user through native automation that handles all shortcut types.",
+  "description": "Swift MCP server for macOS Shortcuts automation with programmatic shortcut generation.",
+  "long_description": "Enables Claude to **execute, manage, and create macOS Shortcuts** through a hybrid AppleScript + CLI approach, providing:\n\n- **Interactive shortcut support** with file pickers, dialogs, and prompts\n- **Programmatic shortcut generation** with 23 action types and templates\n- **Automatic signing and import** for seamless shortcut deployment\n- **Reliable permission handling** for location services and system integrations\n- **Comprehensive user context tracking** with execution history and preferences\n- **AI-enhanced workflow recommendations** based on available shortcuts\n\nTransform Claude into your Mac power user through native automation that handles all shortcut types.",
   "author": {
     "name": "Law Horne",
     "email": "hello@foxtrottwist.com",
@@ -13,13 +13,11 @@
   "homepage": "https://www.lawrencehorne.com/mcp",
   "documentation": "https://github.com/foxtrottwist/shortcuts-mcp?tab=readme-ov-file#shortcuts-mcp",
   "server": {
-    "type": "node",
-    "entry_point": "dist/server.js",
+    "type": "binary",
+    "entry_point": "server/ShortcutsMCP",
     "mcp_config": {
-      "command": "node",
-      "args": [
-        "${__dirname}/dist/server.js"
-      ],
+      "command": "server/ShortcutsMCP",
+      "args": [],
       "env": {}
     }
   },
@@ -29,12 +27,24 @@
       "description": "Execute a macOS Shortcut by name with optional input"
     },
     {
-      "name": "shortcuts_usage",
-      "description": "Access shortcut usage history, execution patterns, and user preferences"
+      "name": "list_shortcuts",
+      "description": "List all available shortcuts with names and identifiers"
     },
     {
       "name": "view_shortcut",
       "description": "Open a macOS Shortcut in the Shortcuts editor"
+    },
+    {
+      "name": "create_shortcut",
+      "description": "Create a new .shortcut file from actions or templates"
+    },
+    {
+      "name": "list_templates",
+      "description": "List available shortcut generation templates"
+    },
+    {
+      "name": "shortcuts_usage",
+      "description": "Access shortcut usage history, execution patterns, and user preferences"
     }
   ],
   "prompts": [
@@ -53,7 +63,7 @@
     "shortcuts",
     "macos",
     "automation",
-    "typescript",
+    "swift",
     "claude",
     "desktop",
     "workflow",
@@ -67,7 +77,9 @@
     "scripting",
     "interactive",
     "permissions",
-    "context-tracking"
+    "context-tracking",
+    "shortcut-generation",
+    "templates"
   ],
   "license": "MIT",
   "repository": {
@@ -78,9 +90,6 @@
     "claude_desktop": ">=0.10.0",
     "platforms": [
       "darwin"
-    ],
-    "runtimes": {
-      "node": ">=22.0.0"
-    }
+    ]
   }
 }

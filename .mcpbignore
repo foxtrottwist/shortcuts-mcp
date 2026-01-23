@@ -1,30 +1,21 @@
-# Development dependencies
-node_modules/typescript
-node_modules/@types/*
-node_modules/vitest
-node_modules/eslint*
-node_modules/prettier
-node_modules/@eslint/*
-node_modules/tsx
-node_modules/jiti
-node_modules/semantic-release
-node_modules/@semantic-release/*
+# Swift build artifacts (not needed - binary is copied separately)
+swift/
+.build/
 
-# Build tools and configs
-src/
-*.test.ts
-*.test.js
-coverage/
+# Development files
+.git/
 .github/
-tsconfig.json
-eslint.config.ts
-vitest.config.ts
-*.md
+.claude/
 
-# Common dev deps that might be included
-node_modules/.bin/
-node_modules/.cache/
-node_modules/@tsconfig/
-node_modules/typescript-eslint
-node_modules/eslint-plugin-*
-node_modules/eslint-config-*
+# Documentation (not needed in bundle)
+*.md
+LICENSE
+
+# Build scripts
+package.json
+package-lock.json
+node_modules/
+
+# Temporary files
+temp-mcpb-build/
+*.mcpb
