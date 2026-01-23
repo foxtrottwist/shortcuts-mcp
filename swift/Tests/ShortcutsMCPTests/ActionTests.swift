@@ -801,4 +801,356 @@ struct ActionTests {
         #expect(shortcut.actions.count == 2)
         #expect(shortcut.actions[0].parameters["SelectMultiple"] == .bool(true))
     }
+
+    // MARK: - ReplaceTextAction Tests
+
+    @Test("ReplaceTextAction creates action with plain strings")
+    func testReplaceTextActionPlainStrings() throws {
+        let action = ReplaceTextAction(find: "hello", replaceWith: "world")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.text.replace")
+        #expect(workflowAction.parameters["WFReplaceTextFind"] == .string("hello"))
+        #expect(workflowAction.parameters["WFReplaceTextReplace"] == .string("world"))
+        // Default case sensitive, so should not be in parameters
+        #expect(workflowAction.parameters["WFReplaceTextCaseSensitive"] == nil)
+        // Default no regex, so should not be in parameters
+        #expect(workflowAction.parameters["WFReplaceTextRegularExpression"] == nil)
+    }
+
+    @Test("ReplaceTextAction with case insensitive option")
+    func testReplaceTextActionCaseInsensitive() throws {
+        let action = ReplaceTextAction(find: "Hello", replaceWith: "Hi", caseSensitive: false)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFReplaceTextCaseSensitive"] == .bool(false))
+    }
+
+    @Test("ReplaceTextAction with regex option")
+    func testReplaceTextActionRegex() throws {
+        let action = ReplaceTextAction(
+            find: "[0-9]+",
+            replaceWith: "###",
+            regularExpression: true
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFReplaceTextFind"] == .string("[0-9]+"))
+        #expect(workflowAction.parameters["WFReplaceTextRegularExpression"] == .bool(true))
+    }
+
+    @Test("ReplaceTextAction with variable reference")
+    func testReplaceTextActionWithVariable() throws {
+        let attachment = TextTokenAttachment.actionOutput(uuid: "find-uuid", outputName: "Pattern")
+        let action = ReplaceTextAction(
+            find: .attachment(attachment),
+            replaceWith: .string("replacement")
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        guard case .dictionary(let dict) = workflowAction.parameters["WFReplaceTextFind"] else {
+            Issue.record("Expected dictionary parameter")
+            return
+        }
+        #expect(dict["WFSerializationType"] == .string("WFTextTokenAttachment"))
+    }
+
+    @Test("ReplaceTextAction with UUID and custom output name")
+    func testReplaceTextActionWithUUID() throws {
+        let action = ReplaceTextAction(
+            find: "old",
+            replaceWith: "new",
+            uuid: "replace-uuid",
+            customOutputName: "ReplacedText"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.uuid == "replace-uuid")
+        #expect(workflowAction.customOutputName == "ReplacedText")
+    }
+
+    // MARK: - SplitTextAction Tests
+
+    @Test("SplitTextAction creates action with new lines separator")
+    func testSplitTextActionNewLines() throws {
+        let action = SplitTextAction(separator: .newLines)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.text.split")
+        #expect(workflowAction.parameters["WFTextSeparator"] == .string("New Lines"))
+        #expect(workflowAction.parameters["WFTextCustomSeparator"] == nil)
+    }
+
+    @Test("SplitTextAction creates action with spaces separator")
+    func testSplitTextActionSpaces() throws {
+        let action = SplitTextAction(separator: .spaces)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFTextSeparator"] == .string("Spaces"))
+    }
+
+    @Test("SplitTextAction creates action with every character separator")
+    func testSplitTextActionEveryCharacter() throws {
+        let action = SplitTextAction(separator: .everyCharacter)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFTextSeparator"] == .string("Every Character"))
+    }
+
+    @Test("SplitTextAction creates action with custom separator")
+    func testSplitTextActionCustom() throws {
+        let action = SplitTextAction(customSeparator: ",")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFTextSeparator"] == .string("Custom"))
+        #expect(workflowAction.parameters["WFTextCustomSeparator"] == .string(","))
+    }
+
+    @Test("SplitTextAction with UUID and custom output name")
+    func testSplitTextActionWithUUID() throws {
+        let action = SplitTextAction(
+            separator: .newLines,
+            uuid: "split-uuid",
+            customOutputName: "SplitItems"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.uuid == "split-uuid")
+        #expect(workflowAction.customOutputName == "SplitItems")
+    }
+
+    // MARK: - CombineTextAction Tests
+
+    @Test("CombineTextAction creates action with new lines separator")
+    func testCombineTextActionNewLines() throws {
+        let action = CombineTextAction(separator: .newLines)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.text.combine")
+        #expect(workflowAction.parameters["WFTextSeparator"] == .string("New Lines"))
+    }
+
+    @Test("CombineTextAction creates action with custom separator")
+    func testCombineTextActionCustom() throws {
+        let action = CombineTextAction(customSeparator: " | ")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFTextSeparator"] == .string("Custom"))
+        #expect(workflowAction.parameters["WFTextCustomSeparator"] == .string(" | "))
+    }
+
+    @Test("CombineTextAction with UUID and custom output name")
+    func testCombineTextActionWithUUID() throws {
+        let action = CombineTextAction(
+            separator: .spaces,
+            uuid: "combine-uuid",
+            customOutputName: "CombinedText"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.uuid == "combine-uuid")
+        #expect(workflowAction.customOutputName == "CombinedText")
+    }
+
+    // MARK: - MatchTextAction Tests
+
+    @Test("MatchTextAction creates action with regex pattern")
+    func testMatchTextActionPattern() throws {
+        let action = MatchTextAction(pattern: "[0-9]+")
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.text.match")
+        #expect(workflowAction.parameters["WFMatchTextPattern"] == .string("[0-9]+"))
+        // Default case sensitive, so should not be in parameters
+        #expect(workflowAction.parameters["WFMatchTextCaseSensitive"] == nil)
+    }
+
+    @Test("MatchTextAction with case insensitive option")
+    func testMatchTextActionCaseInsensitive() throws {
+        let action = MatchTextAction(pattern: "[a-z]+", caseSensitive: false)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFMatchTextCaseSensitive"] == .bool(false))
+    }
+
+    @Test("MatchTextAction with variable pattern")
+    func testMatchTextActionWithVariablePattern() throws {
+        let attachment = TextTokenAttachment.actionOutput(uuid: "pattern-uuid", outputName: "Regex")
+        let action = MatchTextAction(pattern: .attachment(attachment))
+        let workflowAction = action.toWorkflowAction()
+
+        guard case .dictionary(let dict) = workflowAction.parameters["WFMatchTextPattern"] else {
+            Issue.record("Expected dictionary parameter")
+            return
+        }
+        #expect(dict["WFSerializationType"] == .string("WFTextTokenAttachment"))
+    }
+
+    @Test("MatchTextAction with UUID and custom output name")
+    func testMatchTextActionWithUUID() throws {
+        let action = MatchTextAction(
+            pattern: "\\d+",
+            uuid: "match-uuid",
+            customOutputName: "Matches"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.uuid == "match-uuid")
+        #expect(workflowAction.customOutputName == "Matches")
+    }
+
+    // MARK: - ChangeCaseAction Tests
+
+    @Test("ChangeCaseAction creates action with uppercase")
+    func testChangeCaseActionUppercase() throws {
+        let action = ChangeCaseAction(textCase: .uppercase)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.identifier == "is.workflow.actions.text.changecase")
+        #expect(workflowAction.parameters["WFCaseType"] == .string("UPPERCASE"))
+    }
+
+    @Test("ChangeCaseAction creates action with lowercase")
+    func testChangeCaseActionLowercase() throws {
+        let action = ChangeCaseAction(textCase: .lowercase)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFCaseType"] == .string("lowercase"))
+    }
+
+    @Test("ChangeCaseAction creates action with capitalize every word")
+    func testChangeCaseActionCapitalizeEveryWord() throws {
+        let action = ChangeCaseAction(textCase: .capitalizeEveryWord)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFCaseType"] == .string("Capitalize Every Word"))
+    }
+
+    @Test("ChangeCaseAction creates action with title case")
+    func testChangeCaseActionTitleCase() throws {
+        let action = ChangeCaseAction(textCase: .titleCase)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFCaseType"] == .string("Capitalize with Title Case"))
+    }
+
+    @Test("ChangeCaseAction creates action with sentence case")
+    func testChangeCaseActionSentenceCase() throws {
+        let action = ChangeCaseAction(textCase: .sentenceCase)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFCaseType"] == .string("Capitalize with sentence case"))
+    }
+
+    @Test("ChangeCaseAction creates action with alternating case")
+    func testChangeCaseActionAlternatingCase() throws {
+        let action = ChangeCaseAction(textCase: .alternatingCase)
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.parameters["WFCaseType"] == .string("cApItAlIzE wItH aLtErNaTiNg CaSe"))
+    }
+
+    @Test("ChangeCaseAction with UUID and custom output name")
+    func testChangeCaseActionWithUUID() throws {
+        let action = ChangeCaseAction(
+            textCase: .uppercase,
+            uuid: "case-uuid",
+            customOutputName: "UppercaseText"
+        )
+        let workflowAction = action.toWorkflowAction()
+
+        #expect(workflowAction.uuid == "case-uuid")
+        #expect(workflowAction.customOutputName == "UppercaseText")
+    }
+
+    @Test("TextCase enum has all required cases")
+    func testTextCaseCases() throws {
+        #expect(TextCase.uppercase.rawValue == "UPPERCASE")
+        #expect(TextCase.lowercase.rawValue == "lowercase")
+        #expect(TextCase.capitalizeEveryWord.rawValue == "Capitalize Every Word")
+        #expect(TextCase.titleCase.rawValue == "Capitalize with Title Case")
+        #expect(TextCase.sentenceCase.rawValue == "Capitalize with sentence case")
+        #expect(TextCase.alternatingCase.rawValue == "cApItAlIzE wItH aLtErNaTiNg CaSe")
+    }
+
+    @Test("TextSeparator enum has all required cases")
+    func testTextSeparatorCases() throws {
+        #expect(TextSeparator.newLines.rawValue == "New Lines")
+        #expect(TextSeparator.spaces.rawValue == "Spaces")
+        #expect(TextSeparator.everyCharacter.rawValue == "Every Character")
+        #expect(TextSeparator.custom(",").rawValue == "Custom")
+    }
+
+    // MARK: - Text Manipulation Shortcut Integration Test
+
+    @Test("Can create text processing pipeline shortcut")
+    func testTextProcessingPipelineShortcut() throws {
+        // Create a shortcut that:
+        // 1. Creates some text
+        // 2. Changes case to uppercase
+        // 3. Replaces a pattern
+        // 4. Splits by spaces
+        // 5. Combines with commas
+
+        let textUUID = UUID().uuidString
+        let textAction = TextAction("Hello World", uuid: textUUID)
+
+        let caseAction = ChangeCaseAction(textCase: .uppercase)
+        let replaceAction = ReplaceTextAction(find: "WORLD", replaceWith: "SWIFT")
+        let splitAction = SplitTextAction(separator: .spaces)
+        let combineAction = CombineTextAction(customSeparator: ", ")
+
+        let shortcut = Shortcut(
+            name: "Text Processing Pipeline",
+            actions: [
+                textAction.toWorkflowAction(),
+                caseAction.toWorkflowAction(),
+                replaceAction.toWorkflowAction(),
+                splitAction.toWorkflowAction(),
+                combineAction.toWorkflowAction(),
+            ]
+        )
+
+        #expect(shortcut.actions.count == 5)
+        #expect(shortcut.actions[0].identifier == "is.workflow.actions.gettext")
+        #expect(shortcut.actions[1].identifier == "is.workflow.actions.text.changecase")
+        #expect(shortcut.actions[2].identifier == "is.workflow.actions.text.replace")
+        #expect(shortcut.actions[3].identifier == "is.workflow.actions.text.split")
+        #expect(shortcut.actions[4].identifier == "is.workflow.actions.text.combine")
+
+        // Verify encoding works
+        let plistData = try shortcut.encodeToPlist()
+        #expect(!plistData.isEmpty)
+
+        let decoded = try Shortcut.decode(from: plistData)
+        #expect(decoded.actions.count == 5)
+    }
+
+    @Test("Can create regex matching shortcut")
+    func testRegexMatchingShortcut() throws {
+        let textUUID = UUID().uuidString
+        let textAction = TextAction("Phone: 555-1234, Email: test@example.com", uuid: textUUID)
+
+        let matchAction = MatchTextAction(
+            pattern: "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}",
+            caseSensitive: false,
+            uuid: UUID().uuidString,
+            customOutputName: "EmailMatches"
+        )
+
+        let shortcut = Shortcut(
+            name: "Email Extractor",
+            actions: [
+                textAction.toWorkflowAction(),
+                matchAction.toWorkflowAction(),
+            ]
+        )
+
+        #expect(shortcut.actions.count == 2)
+        #expect(shortcut.actions[1].identifier == "is.workflow.actions.text.match")
+
+        // Verify encoding works
+        let plistData = try shortcut.encodeToPlist()
+        #expect(!plistData.isEmpty)
+    }
 }
