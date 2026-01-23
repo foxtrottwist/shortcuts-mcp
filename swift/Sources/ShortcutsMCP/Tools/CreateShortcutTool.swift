@@ -1,23 +1,33 @@
 // SPDX-License-Identifier: MIT
-// CreateShortcutTool.swift - MCP Tool for creating shortcuts from action definitions
+// CreateShortcutTool.swift - MCP Tool for creating shortcuts from action definitions or templates
 
 import Foundation
 import MCP
 
-/// Tool for creating macOS Shortcuts from action definitions.
+/// Tool for creating macOS Shortcuts from action definitions or templates.
 ///
-/// This tool allows programmatic creation of .shortcut files by specifying
-/// actions as JSON definitions. The generated file can be signed and imported
-/// into the Shortcuts app.
+/// This tool supports two modes:
+/// 1. **Actions mode**: Specify actions directly as JSON definitions
+/// 2. **Template mode**: Use a template name with parameters
+///
+/// The generated file can be signed and imported into the Shortcuts app.
 public struct CreateShortcutTool {
     /// Tool name as registered with MCP
     public static let name = "create_shortcut"
+
+    /// Shared template engine for template-based generation
+    public static let templateEngine: TemplateEngine = {
+        let engine = TemplateEngine()
+        // Note: Templates are registered synchronously during init
+        return engine
+    }()
 
     /// Tool definition for MCP registration
     public static let definition = Tool(
         name: name,
         description: """
-            Create a new macOS Shortcut file from action definitions. \
+            Create a new macOS Shortcut file from action definitions or a template. \
+            Use EITHER 'actions' array for custom shortcuts OR 'template' + 'templateParams' for template-based generation. \
             Returns the file path of the generated .shortcut file. \
             The file can be signed with `shortcuts sign` and imported.
             """,
@@ -31,7 +41,7 @@ public struct CreateShortcutTool {
                 "actions": .object([
                     "type": "array",
                     "description":
-                        "Array of action definitions. Each action needs an 'identifier' (e.g., 'is.workflow.actions.gettext') and optional 'parameters' object.",
+                        "Array of action definitions (use this OR template, not both). Each action needs an 'identifier' (e.g., 'is.workflow.actions.gettext') and optional 'parameters' object.",
                     "items": .object([
                         "type": "object",
                         "properties": .object([
@@ -57,6 +67,17 @@ public struct CreateShortcutTool {
                         "required": .array([.string("identifier")])
                     ])
                 ]),
+                "template": .object([
+                    "type": "string",
+                    "description":
+                        "Template name to use for generation (use this OR actions, not both). Use list_templates tool to discover available templates."
+                ]),
+                "templateParams": .object([
+                    "type": "object",
+                    "description":
+                        "Parameters for the template. Each key is a parameter name, value depends on parameter type.",
+                    "additionalProperties": .bool(true)
+                ]),
                 "icon": .object([
                     "type": "object",
                     "description": "Optional icon configuration",
@@ -78,7 +99,7 @@ public struct CreateShortcutTool {
                     ])
                 ])
             ]),
-            "required": .array([.string("name"), .string("actions")])
+            "required": .array([.string("name")])
         ]),
         annotations: Tool.Annotations(
             title: "Create Shortcut",
@@ -92,12 +113,19 @@ public struct CreateShortcutTool {
         /// The name of the shortcut to create
         public let name: String
 
-        /// Array of action definitions
-        public let actions: [ActionDefinition]
+        /// Array of action definitions (for actions mode)
+        public let actions: [ActionDefinition]?
+
+        /// Template name (for template mode)
+        public let template: String?
+
+        /// Template parameters (for template mode)
+        public let templateParams: [String: TemplateParameterValue]?
 
         /// Optional icon configuration
         public let icon: IconConfiguration?
 
+        /// Creates input for actions mode
         public init(
             name: String,
             actions: [ActionDefinition],
@@ -105,8 +133,38 @@ public struct CreateShortcutTool {
         ) {
             self.name = name
             self.actions = actions
+            self.template = nil
+            self.templateParams = nil
             self.icon = icon
         }
+
+        /// Creates input for template mode
+        public init(
+            name: String,
+            template: String,
+            templateParams: [String: TemplateParameterValue] = [:],
+            icon: IconConfiguration? = nil
+        ) {
+            self.name = name
+            self.actions = nil
+            self.template = template
+            self.templateParams = templateParams
+            self.icon = icon
+        }
+
+        /// Determines the creation mode
+        public var mode: CreationMode {
+            if let template, !template.isEmpty {
+                return .template
+            }
+            return .actions
+        }
+    }
+
+    /// Mode for shortcut creation
+    public enum CreationMode {
+        case actions
+        case template
     }
 
     /// Definition of a single action
@@ -179,9 +237,19 @@ public struct CreateShortcutTool {
     /// - Parameter input: The tool input parameters
     /// - Returns: The tool result with the generated file path
     public static func execute(input: Input) async throws -> CallTool.Result {
-        guard !input.actions.isEmpty else {
+        switch input.mode {
+        case .actions:
+            return try await executeActionsMode(input: input)
+        case .template:
+            return try await executeTemplateMode(input: input)
+        }
+    }
+
+    /// Execute in actions mode (original behavior)
+    private static func executeActionsMode(input: Input) async throws -> CallTool.Result {
+        guard let actions = input.actions, !actions.isEmpty else {
             return CallTool.Result(
-                content: [.text("Error: At least one action is required")],
+                content: [.text("Error: At least one action is required when using actions mode")],
                 isError: true
             )
         }
@@ -199,7 +267,7 @@ public struct CreateShortcutTool {
         let generator = ShortcutGenerator(configuration: configuration)
 
         // Convert action definitions to workflow actions
-        let workflowActions = input.actions.map { $0.toWorkflowAction() }
+        let workflowActions = actions.map { $0.toWorkflowAction() }
 
         do {
             // Generate the shortcut file
@@ -210,7 +278,8 @@ public struct CreateShortcutTool {
                 "filePath": result.filePath.path,
                 "fileSize": result.fileSize,
                 "name": input.name,
-                "actionCount": input.actions.count,
+                "actionCount": actions.count,
+                "mode": "actions",
                 "message":
                     "Shortcut '\(input.name)' created successfully. Sign with: shortcuts sign --mode anyone --input \"\(result.filePath.path)\" --output signed.shortcut"
             ]
@@ -235,6 +304,89 @@ public struct CreateShortcutTool {
         }
     }
 
+    /// Execute in template mode
+    private static func executeTemplateMode(input: Input) async throws -> CallTool.Result {
+        guard let templateName = input.template, !templateName.isEmpty else {
+            return CallTool.Result(
+                content: [.text("Error: Template name is required when using template mode")],
+                isError: true
+            )
+        }
+
+        // Ensure built-in templates are registered
+        await templateEngine.registerBuiltInTemplates()
+
+        // Check if template exists
+        let templateInfo = await templateEngine.getTemplateInfo(name: templateName)
+        guard templateInfo != nil else {
+            let availableTemplates = await templateEngine.listTemplates().map(\.name)
+            return CallTool.Result(
+                content: [
+                    .text(
+                        "Error: Template '\(templateName)' not found. Available templates: \(availableTemplates.joined(separator: ", "))"
+                    )
+                ],
+                isError: true
+            )
+        }
+
+        // Build icon configuration
+        let icon = input.icon?.toWorkflowIcon() ?? .default
+
+        // Create generator configuration
+        let configuration = ShortcutGenerator.Configuration(
+            name: input.name,
+            icon: icon
+        )
+
+        do {
+            // Generate shortcut from template
+            let params = input.templateParams ?? [:]
+            let result = try await templateEngine.generateShortcut(
+                templateName: templateName,
+                parameters: params,
+                configuration: configuration
+            )
+
+            // Build response
+            let response: [String: Any] = [
+                "filePath": result.filePath.path,
+                "fileSize": result.fileSize,
+                "name": input.name,
+                "actionCount": result.shortcut.actions.count,
+                "mode": "template",
+                "template": templateName,
+                "message":
+                    "Shortcut '\(input.name)' created from template '\(templateName)'. Sign with: shortcuts sign --mode anyone --input \"\(result.filePath.path)\" --output signed.shortcut"
+            ]
+
+            let jsonData = try JSONSerialization.data(withJSONObject: response)
+            let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
+
+            return CallTool.Result(
+                content: [.text(jsonString)],
+                isError: false
+            )
+        } catch let error as TemplateError {
+            return CallTool.Result(
+                content: [.text("Template error: \(error.localizedDescription)")],
+                isError: true
+            )
+        } catch let error as ShortcutGenerator.GenerationError {
+            return CallTool.Result(
+                content: [.text("Generation error: \(error.localizedDescription)")],
+                isError: true
+            )
+        } catch {
+            return CallTool.Result(
+                content: [
+                    .text("Error generating shortcut from template: \(error.localizedDescription)")
+                ],
+                isError: true
+            )
+        }
+    }
+
     /// Parse tool call parameters into Input struct
     ///
     /// - Parameter arguments: The raw arguments from the MCP call
@@ -245,51 +397,9 @@ public struct CreateShortcutTool {
             throw MCPError.invalidParams("Missing arguments for \(name)")
         }
 
-        // Extract name
+        // Extract name (always required)
         guard let nameValue = arguments["name"], let name = nameValue.stringValue else {
             throw MCPError.invalidParams("Missing or invalid required parameter: name")
-        }
-
-        // Extract actions array
-        guard let actionsValue = arguments["actions"], let actionsArray = actionsValue.arrayValue
-        else {
-            throw MCPError.invalidParams("Missing or invalid required parameter: actions")
-        }
-
-        // Parse each action
-        var actions: [ActionDefinition] = []
-        for (index, actionValue) in actionsArray.enumerated() {
-            guard let actionDict = actionValue.objectValue else {
-                throw MCPError.invalidParams("Action at index \(index) must be an object")
-            }
-
-            guard let identifierValue = actionDict["identifier"],
-                let identifier = identifierValue.stringValue
-            else {
-                throw MCPError.invalidParams(
-                    "Action at index \(index) missing required 'identifier'")
-            }
-
-            // Parse optional parameters
-            var parameters: [String: ActionParameterValue] = [:]
-            if let paramsValue = actionDict["parameters"], let paramsDict = paramsValue.objectValue
-            {
-                parameters = try parseParameters(paramsDict)
-            }
-
-            // Parse optional uuid
-            let uuid = actionDict["uuid"]?.stringValue
-
-            // Parse optional customOutputName
-            let customOutputName = actionDict["customOutputName"]?.stringValue
-
-            actions.append(
-                ActionDefinition(
-                    identifier: identifier,
-                    parameters: parameters,
-                    uuid: uuid,
-                    customOutputName: customOutputName
-                ))
         }
 
         // Parse optional icon
@@ -298,7 +408,110 @@ public struct CreateShortcutTool {
             icon = try parseIcon(iconDict)
         }
 
-        return Input(name: name, actions: actions, icon: icon)
+        // Check if template mode or actions mode
+        let hasTemplate = arguments["template"]?.stringValue != nil
+        let hasActions = arguments["actions"]?.arrayValue != nil
+
+        if hasTemplate && hasActions {
+            throw MCPError.invalidParams(
+                "Cannot specify both 'template' and 'actions'. Use one or the other.")
+        }
+
+        if hasTemplate {
+            // Template mode
+            guard let templateValue = arguments["template"], let template = templateValue.stringValue
+            else {
+                throw MCPError.invalidParams("Missing or invalid parameter: template")
+            }
+
+            // Parse template parameters
+            var templateParams: [String: TemplateParameterValue] = [:]
+            if let paramsValue = arguments["templateParams"],
+                let paramsDict = paramsValue.objectValue
+            {
+                templateParams = try parseTemplateParameters(paramsDict)
+            }
+
+            return Input(name: name, template: template, templateParams: templateParams, icon: icon)
+        } else {
+            // Actions mode (original behavior)
+            guard let actionsValue = arguments["actions"], let actionsArray = actionsValue.arrayValue
+            else {
+                throw MCPError.invalidParams(
+                    "Missing required parameter: either 'actions' array or 'template' name must be provided"
+                )
+            }
+
+            // Parse each action
+            var actions: [ActionDefinition] = []
+            for (index, actionValue) in actionsArray.enumerated() {
+                guard let actionDict = actionValue.objectValue else {
+                    throw MCPError.invalidParams("Action at index \(index) must be an object")
+                }
+
+                guard let identifierValue = actionDict["identifier"],
+                    let identifier = identifierValue.stringValue
+                else {
+                    throw MCPError.invalidParams(
+                        "Action at index \(index) missing required 'identifier'")
+                }
+
+                // Parse optional parameters
+                var parameters: [String: ActionParameterValue] = [:]
+                if let paramsValue = actionDict["parameters"],
+                    let paramsDict = paramsValue.objectValue
+                {
+                    parameters = try parseParameters(paramsDict)
+                }
+
+                // Parse optional uuid
+                let uuid = actionDict["uuid"]?.stringValue
+
+                // Parse optional customOutputName
+                let customOutputName = actionDict["customOutputName"]?.stringValue
+
+                actions.append(
+                    ActionDefinition(
+                        identifier: identifier,
+                        parameters: parameters,
+                        uuid: uuid,
+                        customOutputName: customOutputName
+                    ))
+            }
+
+            return Input(name: name, actions: actions, icon: icon)
+        }
+    }
+
+    /// Parse template parameters from JSON Value to TemplateParameterValue
+    private static func parseTemplateParameters(_ dict: [String: Value]) throws
+        -> [String: TemplateParameterValue]
+    {
+        var result: [String: TemplateParameterValue] = [:]
+        for (key, value) in dict {
+            result[key] = try valueToTemplateParameter(value)
+        }
+        return result
+    }
+
+    /// Convert a JSON Value to TemplateParameterValue
+    private static func valueToTemplateParameter(_ value: Value) throws -> TemplateParameterValue {
+        if let str = value.stringValue {
+            // Check if it looks like a URL
+            if str.hasPrefix("http://") || str.hasPrefix("https://") || str.hasPrefix("file://") {
+                return .url(str)
+            }
+            return .string(str)
+        } else if let num = value.doubleValue {
+            return .number(num)
+        } else if let bool = value.boolValue {
+            return .boolean(bool)
+        } else if value.isNull {
+            return .string("")
+        } else {
+            throw MCPError.invalidParams(
+                "Unsupported template parameter value type. Supported: string, number, boolean.")
+        }
     }
 
     /// Parse parameter dictionary from JSON Value to ActionParameterValue
