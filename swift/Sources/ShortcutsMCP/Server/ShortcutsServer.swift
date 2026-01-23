@@ -105,7 +105,8 @@ public actor ShortcutsServer {
             return ListTools.Result(tools: [
                 RunShortcutTool.definition,
                 ListShortcutsTool.definition,
-                ViewShortcutTool.definition
+                ViewShortcutTool.definition,
+                ShortcutsUsageTool.definition
             ])
         }
 
@@ -126,6 +127,9 @@ public actor ShortcutsServer {
 
             case ViewShortcutTool.name:
                 return try await ViewShortcutTool.execute(arguments: params.arguments)
+
+            case ShortcutsUsageTool.name:
+                return try await ShortcutsUsageTool.execute(arguments: params.arguments)
 
             default:
                 throw MCPError.invalidParams("Unknown tool: \(params.name)")

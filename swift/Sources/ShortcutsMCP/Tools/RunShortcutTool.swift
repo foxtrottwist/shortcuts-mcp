@@ -58,15 +58,34 @@ public struct RunShortcutTool {
     /// - Returns: The tool result with execution output
     public static func execute(input: Input) async throws -> CallTool.Result {
         let executor = ShortcutExecutor.shared
+        let profileManager = UserProfileManager.shared
+
+        let startTime = Date()
 
         do {
             let output = try await executor.runShortcut(name: input.name, input: input.input)
+
+            // Record successful execution
+            let durationMs = Int(Date().timeIntervalSince(startTime) * 1000)
+            try? await profileManager.recordExecution(
+                shortcut: input.name,
+                success: true,
+                duration: durationMs
+            )
 
             return CallTool.Result(
                 content: [.text(output)],
                 isError: false
             )
         } catch {
+            // Record failed execution
+            let durationMs = Int(Date().timeIntervalSince(startTime) * 1000)
+            try? await profileManager.recordExecution(
+                shortcut: input.name,
+                success: false,
+                duration: durationMs
+            )
+
             // Return error as tool result rather than throwing
             return CallTool.Result(
                 content: [.text(error.localizedDescription)],
