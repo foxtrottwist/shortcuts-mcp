@@ -20,5 +20,9 @@ let package = Package(
                 .unsafeFlags(["-parse-as-library"]),
             ]
         ),
+        .testTarget(
+            name: "ShortcutsMCPTests",
+            dependencies: ["ShortcutsMCP"]
+        ),
     ]
 )
