@@ -52,8 +52,9 @@ public actor ShortcutsServer {
     public init(configuration: Configuration = .default) {
         // Configure MCP server capabilities
         let capabilities = Server.Capabilities(
+            prompts: .init(listChanged: false),
+            resources: .init(subscribe: false, listChanged: false),
             tools: .init(listChanged: false)
-            // Resources and prompts will be added in future iterations
         )
 
         self.server = Server(
@@ -73,8 +74,11 @@ public actor ShortcutsServer {
         // Register tool handlers
         await registerToolHandlers()
 
-        // Register resource handlers (placeholder for future)
+        // Register resource handlers
         await registerResourceHandlers()
+
+        // Register prompt handlers
+        await registerPromptHandlers()
 
         // Start the underlying MCP server
         try await server.start(transport: transport)
@@ -145,8 +149,7 @@ public actor ShortcutsServer {
                 throw MCPError.internalError("Server was deallocated")
             }
 
-            // TODO: Return actual resources in future iterations
-            return ListResources.Result(resources: [])
+            return ListResources.Result(resources: ShortcutsResources.all)
         }
 
         // Register resources/read handler
@@ -155,8 +158,46 @@ public actor ShortcutsServer {
                 throw MCPError.internalError("Server was deallocated")
             }
 
-            // TODO: Implement actual resource reading in future iterations
-            throw MCPError.invalidParams("Unknown resource: \(params.uri)")
+            // Load the resource content
+            guard let content = try await ShortcutsResources.load(uri: params.uri) else {
+                throw MCPError.invalidParams("Unknown resource: \(params.uri)")
+            }
+
+            return ReadResource.Result(contents: [content])
+        }
+
+        // Register resources/templates/list handler
+        await server.withMethodHandler(ListResourceTemplates.self) { [weak self] _ in
+            guard self != nil else {
+                throw MCPError.internalError("Server was deallocated")
+            }
+
+            return ListResourceTemplates.Result(templates: ShortcutsResources.templates)
+        }
+    }
+
+    /// Register all prompt handlers
+    private func registerPromptHandlers() async {
+        // Register prompts/list handler
+        await server.withMethodHandler(ListPrompts.self) { [weak self] _ in
+            guard self != nil else {
+                throw MCPError.internalError("Server was deallocated")
+            }
+
+            return ListPrompts.Result(prompts: ShortcutsPrompts.all)
+        }
+
+        // Register prompts/get handler
+        await server.withMethodHandler(GetPrompt.self) { [weak self] params in
+            guard self != nil else {
+                throw MCPError.internalError("Server was deallocated")
+            }
+
+            guard let result = ShortcutsPrompts.get(name: params.name, arguments: params.arguments) else {
+                throw MCPError.invalidParams("Unknown prompt: \(params.name)")
+            }
+
+            return result
         }
     }
 }
