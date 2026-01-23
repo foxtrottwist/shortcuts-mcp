@@ -1,8 +1,0 @@
-{
-  "extends": "@tsconfig/node22/tsconfig.json",
-  "compilerOptions": {
-    "outDir": "dist"
-  },
-  "include": ["src", "src/**/*.test.ts"],
-  "exclude": ["dist", "node_modules"]
-}
