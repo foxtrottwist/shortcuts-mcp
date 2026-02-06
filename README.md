@@ -32,8 +32,8 @@ Clone and build locally for development:
 ```bash
 git clone https://github.com/foxtrottwist/shortcuts-mcp.git
 cd shortcuts-mcp
-npm install
-npm run build
+pnpm install
+pnpm build
 ```
 
 Add to your MCP client configuration. For Claude Desktop:
@@ -322,16 +322,16 @@ git clone https://github.com/foxtrottwist/shortcuts-mcp.git
 cd shortcuts-mcp
 
 # Install dependencies
-npm install
+pnpm install
 
 # Development mode with hot reload
-npm run dev
+pnpm dev
 
 # Build for production
-npm run build
+pnpm build
 
 # Build .mcpb bundle
-npm run build:mcpb
+pnpm build:mcpb
 ```
 
 ### Project Structure
@@ -368,9 +368,9 @@ escapeAppleScriptString(content); // AppleScript safety
 Comprehensive test suite with 63 tests covering AppleScript integration, user context tracking, security functions, error handling scenarios, and logging validation:
 
 ```bash
-npm run test        # Run complete test suite (63 tests)
-npm run lint        # Linting and type checking
-npm run format      # Code formatting
+pnpm test        # Run complete test suite (63 tests)
+pnpm lint        # Linting and type checking
+pnpm format      # Code formatting
 ```
 
 ## Troubleshooting
@@ -429,7 +429,7 @@ Monitor comprehensive logging in your MCP client console for timing, permission 
 1. Fork the repository
 1. Create a feature branch: `git checkout -b feature/amazing-feature`
 1. Make your changes with tests covering AppleScript integration
-1. Run the test suite: `npm run test`
+1. Run the test suite: `pnpm test`
 1. Submit a pull request
 
 ## License

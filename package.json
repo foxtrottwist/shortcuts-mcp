@@ -4,8 +4,8 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "build:mcpb": "npm run build && npm run pack:mcpb",
-    "pack:mcpb": "mkdir temp-mcpb-build && cd temp-mcpb-build && cp ../package*.json ../manifest.json . && cp -r ../dist . && NODE_ENV=production npm ci --omit=dev && npx mcpb pack . ../shortcuts-mcp-${npm_package_version}.mcpb && cd .. && rm -rf temp-mcpb-build",
+    "build:mcpb": "pnpm build && pnpm pack:mcpb",
+    "pack:mcpb": "mkdir temp-mcpb-build && cd temp-mcpb-build && cp ../package.json ../pnpm-lock.yaml ../manifest.json . && cp -r ../dist . && NODE_ENV=production pnpm install --frozen-lockfile --prod && mcpb pack . ../shortcuts-mcp-${npm_package_version}.mcpb && cd .. && rm -rf temp-mcpb-build",
     "start": "tsx src/server.ts",
     "dev": "fastmcp dev src/server.ts",
     "inspect": "fastmcp inspect src/server.ts",
@@ -30,6 +30,7 @@
   "homepage": "https://lawrencehon.com/mcp",
   "type": "module",
   "license": "MIT",
+  "packageManager": "pnpm@10.28.2",
   "description": "TypeScript MCP server for macOS Shortcuts automation.",
   "dependencies": {
     "@fastify/deepmerge": "^3.1.0",
@@ -69,7 +70,7 @@
       [
         "@semantic-release/exec",
         {
-          "prepareCmd": "node -e \"const fs=require('fs'); const pkg=require('./package.json'); const manifest=require('./manifest.json'); manifest.version=pkg.version; fs.writeFileSync('manifest.json', JSON.stringify(manifest, null, 2));\" && npm run build:mcpb"
+          "prepareCmd": "node -e \"const fs=require('fs'); const pkg=require('./package.json'); const manifest=require('./manifest.json'); manifest.version=pkg.version; fs.writeFileSync('manifest.json', JSON.stringify(manifest, null, 2));\" && pnpm build:mcpb"
         }
       ],
       [

@@ -12,9 +12,6 @@ temp-mcpb-build/
 
 # Logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
 # Environment files
 .env
@@ -22,6 +19,7 @@ yarn-error.log*
 .env.*.local
 
 # IDE files
+.claude/
 .vscode/
 .idea/
 
