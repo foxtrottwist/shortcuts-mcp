@@ -69,7 +69,7 @@ export async function buildRequest<T extends SamplingTask>(
     })
     .catch((error) => {
       const errorMessage = `Sampling failed for task ${task}: ${error.message || String(error)}`;
-      logger.error(errorMessage, { error, task });
+      logger.error({ error, task }, errorMessage);
       throw new Error(errorMessage);
     });
 }

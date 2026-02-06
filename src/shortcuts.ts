@@ -103,7 +103,7 @@ export async function viewShortcut(name: string) {
 
   try {
     await execAsync(`shortcuts view ${shellEscape(name)}`);
-    logger.info("Shortcut opened successfully", { name });
+    logger.info({ name }, "Shortcut opened successfully");
     return `Opened "${name}" in Shortcuts editor`;
   } catch (error) {
     logger.warn(
