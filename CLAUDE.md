@@ -122,3 +122,5 @@ src/
 
 - **Semantic release** on `main` branch: conventional commits -> CHANGELOG -> GitHub release with .mcpb asset
 - `manifest.json` version is auto-synced from `package.json` during release
+- **Release-triggering prefixes**: `feat:` (minor), `fix:` (patch), `feat!:`/`fix!:` (major)
+- **Non-releasing prefixes**: `chore:`, `style:`, `docs:`, `refactor:`, `test:` — use these for build/CI-only changes
