@@ -1,3 +1,9 @@
+## [3.0.2](https://github.com/foxtrottwist/shortcuts-mcp/compare/v3.0.1...v3.0.2) (2026-02-06)
+
+### Bug Fixes
+
+- format release assets in semantic-release prepareCmd ([fbdc701](https://github.com/foxtrottwist/shortcuts-mcp/commit/fbdc701d27c3ae722f0f134db42265f746ad9406))
+
 ## [3.0.1](https://github.com/foxtrottwist/shortcuts-mcp/compare/v3.0.0...v3.0.1) (2026-02-06)
 
 ### Bug Fixes

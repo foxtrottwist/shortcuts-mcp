@@ -2,7 +2,7 @@
   "manifest_version": "0.1",
   "name": "shortcuts-mcp",
   "display_name": "Shortcuts",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "TypeScript MCP server for macOS Shortcuts automation.",
   "long_description": "Enables Claude to **execute and manage macOS Shortcuts** through a hybrid AppleScript + CLI approach, providing:\n\n- **Interactive shortcut support** with file pickers, dialogs, and prompts\n- **Reliable permission handling** for location services and system integrations\n- **Comprehensive user context tracking** with execution history and preferences\n- **AI-enhanced workflow recommendations** based on available shortcuts\n\nTransform Claude into your Mac power user through native automation that handles all shortcut types.",
   "author": {
