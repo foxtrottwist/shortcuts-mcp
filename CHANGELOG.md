@@ -2,7 +2,7 @@
 
 ### ⚠ BREAKING CHANGES
 
-* Bundle format changed from .dxt to .mcpb
+- Bundle format changed from .dxt to .mcpb
 
 🤖 Generated with [Claude Code](https://claude.ai/code)
 
@@ -10,7 +10,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 ### Features
 
-* migrate from DXT to MCPB bundle format ([d127642](https://github.com/foxtrottwist/shortcuts-mcp/commit/d1276422d6e212f532916a21aad2848d6299c745))
+- migrate from DXT to MCPB bundle format ([d127642](https://github.com/foxtrottwist/shortcuts-mcp/commit/d1276422d6e212f532916a21aad2848d6299c745))
 
 ## [2.2.0](https://github.com/foxtrottwist/shortcuts-mcp/compare/v2.1.1...v2.2.0) (2025-08-12)
 
