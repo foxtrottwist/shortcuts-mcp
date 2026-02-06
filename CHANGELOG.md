@@ -1,3 +1,9 @@
+## [3.0.1](https://github.com/foxtrottwist/shortcuts-mcp/compare/v3.0.0...v3.0.1) (2026-02-06)
+
+### Bug Fixes
+
+* correct pino import and logger argument order ([00b6ecd](https://github.com/foxtrottwist/shortcuts-mcp/commit/00b6ecd35684ac940282f482c76d8fd1132c6887))
+
 ## [3.0.0](https://github.com/foxtrottwist/shortcuts-mcp/compare/v2.2.0...v3.0.0) (2025-09-22)
 
 ### ⚠ BREAKING CHANGES
