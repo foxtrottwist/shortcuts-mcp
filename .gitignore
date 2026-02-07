@@ -29,3 +29,7 @@ coverage/
 # Temporary files
 temp/
 *.tmp
+
+# Skill artifacts
+*.local
+*.local.*
