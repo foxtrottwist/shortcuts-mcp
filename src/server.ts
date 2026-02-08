@@ -1,13 +1,14 @@
 import { Content, FastMCP } from "fastmcp";
 import { z } from "zod";
 
-import { getVersion } from "./helpers.js";
+import { getVersion, resolveShortcutName } from "./helpers.js";
 import { logger } from "./logger.js";
 import { requestStatistics } from "./sampling.js";
 import {
   getShortcutsList,
   getSystemState,
   loadUserProfile,
+  recordPurpose,
   saveUserProfile,
 } from "./shortcuts-usage.js";
 import { runShortcut, viewShortcut } from "./shortcuts.js";
@@ -26,19 +27,31 @@ server.addTool({
   description:
     "Execute a macOS Shortcut by name with optional input. Supports all shortcut types including interactive workflows.",
   async execute(args, { log }) {
-    const { input, name } = args;
+    const { input, name, purpose } = args;
+
+    const shortcuts = await getShortcutsList();
+    const { canonical, resolved } = resolveShortcutName(name, shortcuts);
+
     log.info("Tool execution started", {
       hasInput: !!input,
-      shortcut: name,
+      resolved,
+      shortcut: canonical,
       tool: "run_shortcut",
     });
 
+    let text = await runShortcut(canonical, input);
+
+    if (resolved) {
+      text = `[Resolved "${name}" -> "${canonical}"]\n${text}`;
+    }
+
+    if (purpose) {
+      await recordPurpose({ purpose, shortcut: canonical });
+    }
+
     return {
       content: [
-        {
-          text: await runShortcut(args.name, args.input),
-          type: "text",
-        },
+        { text, type: "text" },
         {
           resource: await server.embedded("context://system/current"),
           type: "resource",
@@ -53,6 +66,12 @@ server.addTool({
       .optional()
       .describe("Optional input to pass to the shortcut"),
     name: z.string().describe("The name of the Shortcut to run"),
+    purpose: z
+      .string()
+      .optional()
+      .describe(
+        "Brief phrase about why this shortcut is being run (e.g. 'check weather forecast', 'start focus timer')",
+      ),
   }),
 });
 
@@ -124,6 +143,9 @@ server.addTool({
     action: z.enum(["read", "update"]),
     data: z
       .object({
+        annotations: z
+          .record(z.object({ purposes: z.array(z.string()) }))
+          .optional(),
         context: z
           .object({
             "current-projects": z.array(z.string()).optional(),
@@ -166,13 +188,14 @@ server.addTool({
 
 server.addResource({
   description:
-    "Available shortcuts with names and identifiers for discovery and validation.",
+    "Available shortcuts with names, identifiers, and purpose annotations for discovery and validation.",
   async load() {
+    const shortcuts = await getShortcutsList();
     return {
-      text: await getShortcutsList(),
+      text: JSON.stringify(shortcuts, null, 2),
     };
   },
-  mimeType: "text/plain",
+  mimeType: "application/json",
   name: "Current shortcuts list",
   uri: "shortcuts://available",
 });
