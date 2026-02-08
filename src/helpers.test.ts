@@ -4,9 +4,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   escapeAppleScriptString,
   isDirectory,
+  isDuplicatePurpose,
   isExecError,
   isFile,
   isOlderThan24Hrs,
+  normalizePurpose,
+  resolveShortcutName,
   shellEscape,
 } from "./helpers.js";
 
@@ -182,6 +185,79 @@ describe("helpers", () => {
 
       const result = await isFile("/nonexistent");
       expect(result).toBe(false);
+    });
+  });
+
+  describe("normalizePurpose", () => {
+    it("should trim whitespace", () => {
+      expect(normalizePurpose("  check weather  ")).toBe("check weather");
+    });
+
+    it("should lowercase", () => {
+      expect(normalizePurpose("Check Weather")).toBe("check weather");
+    });
+
+    it("should collapse internal whitespace", () => {
+      expect(normalizePurpose("check   the   weather")).toBe(
+        "check the weather",
+      );
+    });
+  });
+
+  describe("isDuplicatePurpose", () => {
+    it("should detect exact duplicate", () => {
+      expect(isDuplicatePurpose("check weather", ["check weather"])).toBe(true);
+    });
+
+    it("should detect case-insensitive duplicate", () => {
+      expect(isDuplicatePurpose("Check Weather", ["check weather"])).toBe(true);
+    });
+
+    it("should detect whitespace-variant duplicate", () => {
+      expect(isDuplicatePurpose("  check   weather  ", ["check weather"])).toBe(
+        true,
+      );
+    });
+
+    it("should return false for unique purpose", () => {
+      expect(
+        isDuplicatePurpose("check traffic", ["check weather", "set alarm"]),
+      ).toBe(false);
+    });
+  });
+
+  describe("resolveShortcutName", () => {
+    const shortcuts = {
+      "Morning Summary": { id: "abc-123" },
+      "Set Timer": { id: "def-456" },
+    };
+
+    it("should return exact match with resolved=false", () => {
+      expect(resolveShortcutName("Morning Summary", shortcuts)).toEqual({
+        canonical: "Morning Summary",
+        resolved: false,
+      });
+    });
+
+    it("should return case-insensitive match with resolved=true", () => {
+      expect(resolveShortcutName("morning summary", shortcuts)).toEqual({
+        canonical: "Morning Summary",
+        resolved: true,
+      });
+    });
+
+    it("should handle mixed case", () => {
+      expect(resolveShortcutName("SET TIMER", shortcuts)).toEqual({
+        canonical: "Set Timer",
+        resolved: true,
+      });
+    });
+
+    it("should return original name with resolved=false when not found", () => {
+      expect(resolveShortcutName("Nonexistent", shortcuts)).toEqual({
+        canonical: "Nonexistent",
+        resolved: false,
+      });
     });
   });
 });

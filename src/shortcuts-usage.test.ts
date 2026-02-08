@@ -1,12 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  enrichShortcutsWithAnnotations,
   ensureDataDirectory,
   getShortcutsList,
   getSystemState,
   load,
   loadUserProfile,
+  parseShortcutsList,
   recordExecution,
+  recordPurpose,
   saveStatistics,
   saveUserProfile,
 } from "./shortcuts-usage.js";
@@ -17,11 +20,15 @@ vi.mock("fs/promises", () => ({
   writeFile: vi.fn(),
 }));
 
-vi.mock("./helpers.js", () => ({
-  isDirectory: vi.fn(),
-  isFile: vi.fn(),
-  isOlderThan24Hrs: vi.fn(),
-}));
+vi.mock("./helpers.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./helpers.js")>();
+  return {
+    isDirectory: vi.fn(),
+    isDuplicatePurpose: actual.isDuplicatePurpose,
+    isFile: vi.fn(),
+    isOlderThan24Hrs: vi.fn(),
+  };
+});
 
 vi.mock("./shortcuts.js", () => ({
   listShortcuts: vi.fn(),
@@ -94,54 +101,154 @@ describe("shortcuts-usage", () => {
     });
   });
 
-  describe("getShortcutsList", () => {
-    it("should return cached shortcuts if less than 24 hours old", async () => {
-      const cachedData = `Last Updated: <<<2025-08-04T10:00:00Z>>>\n\nShortcut 1\nShortcut 2`;
-      const expectedShortcuts = `Shortcut 1\nShortcut 2`;
+  describe("enrichShortcutsWithAnnotations", () => {
+    it("should merge purposes from profile annotations", async () => {
+      const shortcuts = {
+        Morning: { id: "abc-123" },
+        Timer: { id: "def-456" },
+      };
+      const profile = {
+        annotations: { Morning: { purposes: ["check weather"] } },
+      };
       mockIsFile.mockResolvedValue(true);
-      mockReadFile.mockResolvedValue(cachedData);
+      mockReadFile.mockResolvedValue(JSON.stringify(profile));
+
+      const result = await enrichShortcutsWithAnnotations(shortcuts);
+
+      expect(result.Morning.purposes).toEqual(["check weather"]);
+      expect(result.Timer.purposes).toBeUndefined();
+    });
+
+    it("should skip shortcuts without annotations", async () => {
+      const shortcuts = { Timer: { id: "def-456" } };
+      mockIsFile.mockResolvedValue(true);
+      mockReadFile.mockResolvedValue(JSON.stringify({}));
+
+      const result = await enrichShortcutsWithAnnotations(shortcuts);
+
+      expect(result.Timer.purposes).toBeUndefined();
+    });
+
+    it("should handle empty profile", async () => {
+      const shortcuts = { Timer: { id: "def-456" } };
+      mockIsFile.mockResolvedValue(false);
+      mockIsDirectory.mockResolvedValue(false);
+      mockMkdir.mockResolvedValue(undefined);
+      mockWriteFile.mockResolvedValue(undefined);
+
+      const result = await enrichShortcutsWithAnnotations(shortcuts);
+
+      expect(result).toEqual(shortcuts);
+    });
+  });
+
+  describe("getShortcutsList", () => {
+    it("should return cached shortcuts from JSON if fresh", async () => {
+      const cache = {
+        shortcuts: { "My Shortcut": { id: "abc-123" } },
+        timestamp: "2025-08-04T10:00:00Z",
+      };
+      mockIsFile.mockResolvedValue(true);
+      mockReadFile.mockResolvedValue(JSON.stringify(cache));
+      mockIsOlderThan24Hrs.mockReturnValue(false);
 
       const result = await getShortcutsList();
 
-      expect(result).toBe(expectedShortcuts);
+      expect(result).toEqual({ "My Shortcut": { id: "abc-123" } });
       expect(mockListShortcuts).not.toHaveBeenCalled();
     });
 
-    it("should fetch new shortcuts if cache is older than 24 hours", async () => {
-      const oldCachedData = `Last Updated: <<<2025-08-02T10:00:00Z>>>\n\nOld shortcuts`;
-      const newShortcuts = "New Shortcut 1\nNew Shortcut 2";
+    it("should refresh when cache is stale", async () => {
+      const staleCache = {
+        shortcuts: { Old: { id: "old-id" } },
+        timestamp: "2025-08-02T10:00:00Z",
+      };
+      const cliOutput = "New Shortcut (new-id)";
 
       mockIsFile.mockResolvedValue(true);
-      mockReadFile.mockResolvedValue(oldCachedData);
-      mockListShortcuts.mockResolvedValue(newShortcuts);
-      mockIsDirectory.mockResolvedValue(false);
+      mockReadFile.mockResolvedValue(JSON.stringify(staleCache));
       mockIsOlderThan24Hrs.mockReturnValue(true);
+      mockListShortcuts.mockResolvedValue(cliOutput);
       mockMkdir.mockResolvedValue(undefined);
       mockWriteFile.mockResolvedValue(undefined);
 
       const result = await getShortcutsList();
 
       expect(mockListShortcuts).toHaveBeenCalled();
-      expect(mockWriteFile).toHaveBeenCalledWith(
-        expect.stringContaining("shortcuts-cache.txt"),
-        expect.stringContaining(newShortcuts),
-      );
-      expect(result).toBe(newShortcuts);
+      expect(result).toEqual({ "New Shortcut": { id: "new-id" } });
     });
 
-    it("should fetch shortcuts if no cache exists", async () => {
-      const shortcuts = "Shortcut 1\nShortcut 2";
+    it("should refresh when no cache exists", async () => {
+      const cliOutput = "Shortcut 1 (id-1)\nShortcut 2 (id-2)";
 
       mockIsFile.mockResolvedValue(false);
-      mockListShortcuts.mockResolvedValue(shortcuts);
-      mockIsDirectory.mockResolvedValue(false);
+      mockListShortcuts.mockResolvedValue(cliOutput);
       mockMkdir.mockResolvedValue(undefined);
       mockWriteFile.mockResolvedValue(undefined);
 
       const result = await getShortcutsList();
 
       expect(mockListShortcuts).toHaveBeenCalled();
-      expect(result).toBe(shortcuts);
+      expect(result).toEqual({
+        "Shortcut 1": { id: "id-1" },
+        "Shortcut 2": { id: "id-2" },
+      });
+    });
+
+    it("should gracefully handle old plaintext cache format", async () => {
+      const oldFormat = `Last Updated: <<<2025-08-04T10:00:00Z>>>\n\nShortcut 1\nShortcut 2`;
+      const cliOutput = "Shortcut 1 (id-1)";
+
+      mockIsFile.mockResolvedValue(true);
+      mockReadFile.mockImplementation((filePath: string) => {
+        if (filePath.includes("shortcuts-cache"))
+          return Promise.resolve(oldFormat);
+        // user-profile.json
+        return Promise.resolve(JSON.stringify({}));
+      });
+      mockListShortcuts.mockResolvedValue(cliOutput);
+      mockMkdir.mockResolvedValue(undefined);
+      mockWriteFile.mockResolvedValue(undefined);
+
+      const result = await getShortcutsList();
+
+      expect(mockListShortcuts).toHaveBeenCalled();
+      expect(result).toEqual({ "Shortcut 1": { id: "id-1" } });
+    });
+  });
+
+  describe("parseShortcutsList", () => {
+    it("should parse valid CLI output", () => {
+      const output = "Morning Summary (abc-123)\nSet Timer (def-456)";
+      const result = parseShortcutsList(output);
+
+      expect(result).toEqual({
+        "Morning Summary": { id: "abc-123" },
+        "Set Timer": { id: "def-456" },
+      });
+    });
+
+    it("should handle whitespace in names", () => {
+      const output = "My Long Shortcut Name (id-123)";
+      const result = parseShortcutsList(output);
+
+      expect(result).toEqual({
+        "My Long Shortcut Name": { id: "id-123" },
+      });
+    });
+
+    it("should skip malformed lines", () => {
+      const output = "Valid Shortcut (id-1)\nno-parens-here\n\nAnother (id-2)";
+      const result = parseShortcutsList(output);
+
+      expect(result).toEqual({
+        Another: { id: "id-2" },
+        "Valid Shortcut": { id: "id-1" },
+      });
+    });
+
+    it("should return empty map for empty input", () => {
+      expect(parseShortcutsList("")).toEqual({});
     });
   });
 
@@ -265,6 +372,82 @@ describe("shortcuts-usage", () => {
         shortcut: "New Shortcut",
         success: false,
       });
+    });
+  });
+
+  describe("recordPurpose", () => {
+    it("should record purpose for new shortcut", async () => {
+      // loadUserProfile: file exists, empty profile
+      mockIsFile.mockResolvedValue(true);
+      mockReadFile.mockResolvedValue(JSON.stringify({}));
+      mockWriteFile.mockResolvedValue(undefined);
+
+      await recordPurpose({ purpose: "check weather", shortcut: "Morning" });
+
+      const writeCall = mockWriteFile.mock.calls.find((call) =>
+        call[0].includes("user-profile.json"),
+      );
+      expect(writeCall).toBeDefined();
+      const written = JSON.parse(writeCall![1]);
+      expect(written.annotations.Morning.purposes).toContain("check weather");
+    });
+
+    it("should append purpose to existing annotations", async () => {
+      const profile = {
+        annotations: { Morning: { purposes: ["check weather"] } },
+      };
+      mockIsFile.mockResolvedValue(true);
+      mockReadFile.mockResolvedValue(JSON.stringify(profile));
+      mockWriteFile.mockResolvedValue(undefined);
+
+      await recordPurpose({ purpose: "read news", shortcut: "Morning" });
+
+      const writeCall = mockWriteFile.mock.calls.find((call) =>
+        call[0].includes("user-profile.json"),
+      );
+      const written = JSON.parse(writeCall![1]);
+      expect(written.annotations.Morning.purposes).toEqual([
+        "check weather",
+        "read news",
+      ]);
+    });
+
+    it("should skip duplicate purpose", async () => {
+      const profile = {
+        annotations: { Morning: { purposes: ["check weather"] } },
+      };
+      mockIsFile.mockResolvedValue(true);
+      mockReadFile.mockResolvedValue(JSON.stringify(profile));
+      mockWriteFile.mockResolvedValue(undefined);
+
+      await recordPurpose({ purpose: "Check Weather", shortcut: "Morning" });
+
+      // writeFile should not be called for user-profile (only reads happened)
+      expect(mockWriteFile).not.toHaveBeenCalled();
+    });
+
+    it("should evict oldest when over cap of 8", async () => {
+      const profile = {
+        annotations: {
+          Morning: {
+            purposes: ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8"],
+          },
+        },
+      };
+      mockIsFile.mockResolvedValue(true);
+      mockReadFile.mockResolvedValue(JSON.stringify(profile));
+      mockWriteFile.mockResolvedValue(undefined);
+
+      await recordPurpose({ purpose: "p9", shortcut: "Morning" });
+
+      const writeCall = mockWriteFile.mock.calls.find((call) =>
+        call[0].includes("user-profile.json"),
+      );
+      const written = JSON.parse(writeCall![1]);
+      const purposes = written.annotations.Morning.purposes;
+      expect(purposes).toHaveLength(8);
+      expect(purposes[0]).toBe("p2");
+      expect(purposes[7]).toBe("p9");
     });
   });
 

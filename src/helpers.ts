@@ -4,6 +4,8 @@ import { stat } from "fs/promises";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
+import type { ShortcutsMap } from "./shortcuts-usage.js";
+
 /**
  * Escapes a string for safe use in AppleScript by doubling backslashes and escaping quotes.
  *
@@ -41,6 +43,14 @@ export async function isDirectory(path: string) {
     .then((res) => res.isDirectory())
     .catch(() => false);
 }
+export function isDuplicatePurpose(
+  newPurpose: string,
+  existing: string[],
+): boolean {
+  const normalized = normalizePurpose(newPurpose);
+  return existing.some((p) => normalizePurpose(p) === normalized);
+}
+
 /**
  * Type guard to check if an error is an ExecException with stderr/stdout properties.
  *
@@ -96,6 +106,28 @@ export function isOlderThan24Hrs(timestamp?: Date | string) {
   }
 
   return !isNaN(ts) && new Date().getTime() - ts > 24 * 60 * 60 * 1000;
+}
+
+export function normalizePurpose(purpose: string): string {
+  return purpose.toLowerCase().trim().replace(/\s+/g, " ");
+}
+
+export function resolveShortcutName(
+  name: string,
+  shortcuts: ShortcutsMap,
+): { canonical: string; resolved: boolean } {
+  if (name in shortcuts) {
+    return { canonical: name, resolved: false };
+  }
+
+  const lower = name.toLowerCase();
+  for (const key of Object.keys(shortcuts)) {
+    if (key.toLowerCase() === lower) {
+      return { canonical: key, resolved: true };
+    }
+  }
+
+  return { canonical: name, resolved: false };
 }
 
 /**
