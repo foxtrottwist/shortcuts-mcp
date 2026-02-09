@@ -1,3 +1,11 @@
+## [3.1.0](https://github.com/foxtrottwist/shortcuts-mcp/compare/v3.0.2...v3.1.0) (2026-02-09)
+
+### Features
+
+- add shortcut annotations, name resolution, and JSON cache ([bd46310](https://github.com/foxtrottwist/shortcuts-mcp/commit/bd463108cb559d15cbfc9662f61c8b2300f1655d))
+- add skill directory for standalone distribution ([bd8d497](https://github.com/foxtrottwist/shortcuts-mcp/commit/bd8d4973664df52fab3ff620b97c1a4f734ec566))
+- integrate annotations and name resolution into server tools ([a57c113](https://github.com/foxtrottwist/shortcuts-mcp/commit/a57c113a035b4bfcb323e4845db7b58b81ed09db))
+
 ## [3.0.2](https://github.com/foxtrottwist/shortcuts-mcp/compare/v3.0.1...v3.0.2) (2026-02-06)
 
 ### Bug Fixes
