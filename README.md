@@ -8,13 +8,16 @@ I wanted to integrate my existing automation workflows with AI assistance. Rathe
 
 ## What You Get
 
+- **Purpose Annotations**: Record what shortcuts do as you use them, building discoverable intent across sessions
+- **Smart Discovery**: Browse shortcuts by what they do, not just their name — intent matching without prompting
+- **Case-Insensitive Names**: Pass shortcut names as-is; resolution handles casing automatically
 - **Interactive Support**: File pickers, dialogs, and prompts work normally through AppleScript execution
 - **Hybrid Integration**: AppleScript for compatibility + CLI for discovery and management
 - **Permission Handling**: Location services, system integrations work with proper permission context
 - **All Shortcut Types**: Interactive workflows and automation both work reliably
 - **Reliable Execution**: No hanging on permission requests or interactive elements
 - **Local Usage Tracking**: Execution history and preferences stored only on your computer
-- **Intelligent Analytics**: Automatic usage pattern analysis via MCP sampling (when supported)
+- **Usage Analytics**: Automatic pattern analysis via MCP sampling (when supported)
 
 ## Installation
 
@@ -86,6 +89,12 @@ Execute my "File Organizer"
 
 Both automated and interactive shortcuts work reliably through AppleScript execution.
 
+### Purpose Annotations
+
+Every time a shortcut runs with a purpose (e.g. "check weather forecast"), the server stores that annotation. Over time, this builds a map of what each shortcut actually does. Your AI assistant uses these annotations to match your intent to the right shortcut without asking — even in new conversations.
+
+Annotations persist in `~/.shortcuts-mcp/user-profile.json` and appear in the `shortcuts://available` resource alongside each shortcut's name and ID.
+
 ## Execution Tracking - Local Organization
 
 The server keeps track of your shortcut usage to help organize your workflow. **All execution history and preferences stay on your computer** - no data is transmitted anywhere.
@@ -93,6 +102,7 @@ The server keeps track of your shortcut usage to help organize your workflow. **
 ### What Gets Tracked
 
 - Which shortcuts you run and when
+- Purpose annotations describing what each shortcut does
 - Execution success/failure for debugging
 - Basic preferences you set through your AI assistant
 - Usage patterns for shortcut suggestions
@@ -118,7 +128,7 @@ Remember I prefer the "Photo Editor Pro" shortcut for image work
 
 Takes a few runs to build useful history - the tracking helps your AI assistant give better suggestions based on what actually works for you.
 
-### MCP Sampling for Intelligent Analytics
+### MCP Sampling for Usage Analytics
 
 When your MCP client supports sampling, the server automatically generates statistics from your usage data. This includes:
 
@@ -277,18 +287,18 @@ While all shortcuts work, some integrate better with AI assistant workflows:
 
 1. **Tools**:
 
-- `run_shortcut` - AppleScript execution with comprehensive logging
-- `shortcuts_usage` - Read and update local preferences and usage tracking
-- `view_shortcut` - CLI editor opening with fallback guidance
+- `run_shortcut` - AppleScript execution with case-insensitive name resolution and purpose annotations
+- `shortcuts_usage` - Read and update local preferences, usage tracking, and shortcut annotations
+- `view_shortcut` - Open shortcuts in the editor for interactive UI workflows
 
 1. **Resources** (automatically embedded):
 
-- `shortcuts://available` - Current shortcuts list
+- `shortcuts://available` - JSON map of shortcuts with IDs and purpose annotations
 - `context://system/current` - System state for time-based suggestions
 - `context://user/profile` - User preferences and usage patterns
 - `statistics://generated` - AI-generated statistics from execution history (when sampling supported)
 
-1. **Enhanced Prompts**: AI-powered shortcut recommendation with name resolution strategies
+1. **Prompts**: Shortcut recommendation based on available shortcuts and usage history
 1. **Local Data Storage**: Performance tracking, permission detection, debugging information (stays on your computer)
 
 ## Real-World Examples
@@ -351,7 +361,7 @@ src/
 ### Core Functions
 
 ```typescript
-// AppleScript execution with comprehensive logging
+// AppleScript execution with structured logging
 await runShortcut(log, "Shortcut Name", "input");
 
 // CLI discovery and management
@@ -365,10 +375,10 @@ escapeAppleScriptString(content); // AppleScript safety
 
 ### Testing
 
-Comprehensive test suite with 63 tests covering AppleScript integration, user context tracking, security functions, error handling scenarios, and logging validation:
+83 tests covering AppleScript integration, user context tracking, security functions, name resolution, annotations, and error handling:
 
 ```bash
-pnpm test        # Run complete test suite (63 tests)
+pnpm test        # Run complete test suite (83 tests)
 pnpm lint        # Linting and type checking
 pnpm format      # Code formatting
 ```
@@ -401,7 +411,7 @@ shortcuts list --show-identifiers
 osascript -e 'tell application "Shortcuts Events" to run the shortcut named "My Shortcut"'
 ```
 
-Monitor comprehensive logging in your MCP client console for timing, permission detection, and error analysis.
+Check structured logging in your MCP client console for timing, permission detection, and error details.
 
 ### Execution Characteristics
 
@@ -418,9 +428,12 @@ Monitor comprehensive logging in your MCP client console for timing, permission 
 ## What's Next
 
 - [x] AppleScript integration with permission handling
-- [x] Comprehensive logging and error detection
+- [x] Structured logging and error detection
 - [x] MCPB bundle format and automated releases
 - [x] Structured logging and error detection
+- [x] Purpose annotations and smart shortcut discovery
+- [x] Case-insensitive name resolution
+- [x] JSON shortcuts cache with annotation merging
 - [ ] Workflow chaining capabilities
 - [ ] Performance monitoring and analytics
 

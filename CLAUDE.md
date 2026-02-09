@@ -106,8 +106,8 @@ src/
 ### Data Storage
 
 - **Location**: `~/.shortcuts-mcp/`
-- `user-profile.json` - Preferences, projects, focus areas
-- `shortcuts-cache.txt` - 24hr cached shortcuts list with timestamp
+- `user-profile.json` - Preferences, projects, focus areas, and shortcut purpose annotations
+- `shortcuts-cache.txt` - 24hr cached JSON map of shortcuts (name -> {id, purposes}) with timestamp
 - `statistics.json` - AI-generated stats (via MCP sampling, refreshed every 24hrs)
 - `executions/YYYY-MM-DD.json` - Daily execution logs
 
