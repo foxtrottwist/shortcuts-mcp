@@ -14,19 +14,3 @@ pre-commit:
 
     - name: test
       run: pnpm test
-
-    - name: skill-validate
-      glob: "skill/SKILL.md"
-      run: |
-        echo "==> Validating skill/SKILL.md"
-        if [ ! -f skill/SKILL.md ]; then echo "FAIL: skill/SKILL.md not found"; exit 1; fi
-        first=$(head -1 skill/SKILL.md)
-        if [ "$first" != "---" ]; then echo "FAIL: missing frontmatter opening ---"; exit 1; fi
-        closing=$(awk 'NR>1 && /^---$/{print NR; exit}' skill/SKILL.md)
-        if [ -z "$closing" ]; then echo "FAIL: missing frontmatter closing ---"; exit 1; fi
-        fm=$(sed -n "2,$((closing - 1))p" skill/SKILL.md)
-        if ! echo "$fm" | grep -qE '^name:'; then echo "FAIL: missing name field"; exit 1; fi
-        name_val=$(echo "$fm" | grep -E '^name:' | sed 's/^name:[[:space:]]*//' | tr -d '"'"'")
-        if ! echo "$name_val" | grep -qE '^[a-z0-9][a-z0-9-]*[a-z0-9]$'; then echo "FAIL: name '$name_val' not hyphen-case"; exit 1; fi
-        if ! echo "$fm" | grep -qE '^description:'; then echo "FAIL: missing description field"; exit 1; fi
-        echo "==> Skill validation passed (name: $name_val)"

@@ -70,7 +70,7 @@
       [
         "@semantic-release/exec",
         {
-          "prepareCmd": "node -e \"const fs=require('fs'); const pkg=require('./package.json'); const manifest=require('./manifest.json'); manifest.version=pkg.version; fs.writeFileSync('manifest.json', JSON.stringify(manifest, null, 2));\" && pnpm build:mcpb && mkdir -p shortcuts-mcp && cp skill/SKILL.md shortcuts-mcp/SKILL.md && zip -r \"shortcuts-mcp-${nextRelease.version}.skill\" shortcuts-mcp/ && rm -rf shortcuts-mcp && pnpm exec prettier --write CHANGELOG.md manifest.json"
+          "prepareCmd": "node -e \"const fs=require('fs'); const pkg=require('./package.json'); const manifest=require('./manifest.json'); manifest.version=pkg.version; fs.writeFileSync('manifest.json', JSON.stringify(manifest, null, 2));\" && pnpm build:mcpb && pnpm exec prettier --write CHANGELOG.md manifest.json"
         }
       ],
       [
@@ -91,10 +91,6 @@
             {
               "path": "shortcuts-mcp-*.mcpb",
               "label": "MCP Bundle (.mcpb)"
-            },
-            {
-              "path": "shortcuts-mcp-*.skill",
-              "label": "Skill Bundle (.skill)"
             }
           ]
         }

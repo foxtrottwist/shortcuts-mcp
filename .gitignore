@@ -5,7 +5,6 @@ node_modules
 # MCPB/DXT packages and build artifacts
 *.dxt
 *.mcpb
-*.skill
 temp-mcpb-build/
 
 # macOS system files

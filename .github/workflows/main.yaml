@@ -38,14 +38,6 @@ jobs:
       - name: Build project
         run: pnpm build
 
-      - name: Validate skill
-        run: |
-          test -f skill/SKILL.md || { echo "FAIL: skill/SKILL.md not found"; exit 1; }
-          head -1 skill/SKILL.md | grep -q '^---$' || { echo "FAIL: missing frontmatter"; exit 1; }
-          grep -q '^name:' skill/SKILL.md || { echo "FAIL: missing name field"; exit 1; }
-          grep -q '^description:' skill/SKILL.md || { echo "FAIL: missing description field"; exit 1; }
-          echo "Skill validation passed"
-
       - name: Semantic Release
         run: pnpm exec semantic-release
         env:

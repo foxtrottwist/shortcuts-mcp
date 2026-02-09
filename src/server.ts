@@ -25,7 +25,7 @@ server.addTool({
     title: "Run Shortcut",
   },
   description:
-    "Execute a macOS Shortcut by name with optional input. Supports all shortcut types including interactive workflows.",
+    "Execute a macOS Shortcut by name with optional input. Names resolve case-insensitively. If unsure which shortcut to run, call shortcuts_usage with resources: ['shortcuts'] to browse available shortcuts with purpose annotations. Error 1743 means the user must grant automation access in System Settings > Privacy & Security > Automation.",
   async execute(args, { log }) {
     const { input, name, purpose } = args;
 
@@ -70,7 +70,7 @@ server.addTool({
       .string()
       .optional()
       .describe(
-        "Brief phrase about why this shortcut is being run (e.g. 'check weather forecast', 'start focus timer')",
+        "Always include. Brief phrase describing the user's goal (e.g. 'check weather forecast', 'start focus timer'). Builds annotations that make shortcuts discoverable across sessions.",
       ),
   }),
 });
@@ -82,7 +82,7 @@ server.addTool({
     title: "Shortcuts Usage & Analytics",
   },
   description:
-    "Access shortcut usage history, execution patterns, and user preferences. Use for usage analysis, troubleshooting, and storing user preferences.",
+    "Access shortcut usage history, execution patterns, and user preferences. Before asking the user which shortcut to use, load the shortcuts resource (resources: ['shortcuts']) — entries with 'purposes' describe what shortcuts do, enabling intent matching without prompting.",
   async execute(args, { log }) {
     const { action, data = {}, resources = [] } = args;
 
@@ -164,7 +164,7 @@ server.addTool({
       .array(z.enum(["profile", "shortcuts", "statistics"]))
       .optional()
       .describe(
-        "Contextual resources to include. Consider time elapsed and conversation needs: 'shortcuts' for discovery/validation, 'recents' for troubleshooting/patterns, 'profile' for personalized recommendations.",
+        "Contextual resources to include. 'shortcuts' for available shortcuts with purpose annotations, 'profile' for user preferences and workflow patterns, 'statistics' for execution analytics.",
       ),
   }),
 });
@@ -176,7 +176,7 @@ server.addTool({
     title: "View Shortcut",
   },
   description:
-    "Open a macOS Shortcut in the Shortcuts editor for viewing or editing.",
+    "Open a macOS Shortcut in the Shortcuts editor for viewing or editing. Use for shortcuts requiring interactive UI (file pickers, dialogs, prompts) since MCP cannot display their interface.",
   async execute(args) {
     return String(await viewShortcut(args.name));
   },
@@ -188,7 +188,7 @@ server.addTool({
 
 server.addResource({
   description:
-    "Available shortcuts with names, identifiers, and purpose annotations for discovery and validation.",
+    "JSON map of available shortcuts keyed by name, each with an ID and optional 'purposes' array from prior usage. Cache refreshes every 24 hours.",
   async load() {
     const shortcuts = await getShortcutsList();
     return {
