@@ -175,7 +175,9 @@ export async function load<T = unknown>(filePath: string, defaultValue: T) {
         { error: String(error), path: filePath },
         "JSON file corrupted",
       );
-      throw new Error(`File at ${filePath} corrupted - please reset`);
+      throw new Error(`File at ${filePath} corrupted - please reset`, {
+        cause: error,
+      });
     }
   }
 

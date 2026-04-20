@@ -144,7 +144,7 @@ server.addTool({
     data: z
       .object({
         annotations: z
-          .record(z.object({ purposes: z.array(z.string()) }))
+          .record(z.string(), z.object({ purposes: z.array(z.string()) }))
           .optional(),
         context: z
           .object({
@@ -155,7 +155,9 @@ server.addTool({
         preferences: z
           .object({
             "favorite-shortcuts": z.array(z.string()).optional(),
-            "workflow-patterns": z.record(z.array(z.string())).optional(),
+            "workflow-patterns": z
+              .record(z.string(), z.array(z.string()))
+              .optional(),
           })
           .optional(),
       })

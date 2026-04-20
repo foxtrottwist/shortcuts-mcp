@@ -21,6 +21,7 @@ export async function listShortcuts() {
       isExecError(error)
         ? `Failed to list shortcuts: ${error.message}`
         : String(error),
+      { cause: error },
     );
   }
 }
@@ -94,6 +95,7 @@ export async function runShortcut(shortcut: string, input?: string) {
       isExecError(error)
         ? `Failed to run ${shortcut} shortcut: ${error.message}`
         : String(error),
+      { cause: error },
     );
   }
 }
