@@ -1,0 +1,20 @@
+{
+  "name": "shortcuts-mcp",
+  "description": "MCP server that lets Claude run, view, and annotate macOS Shortcuts via a hybrid AppleScript + CLI approach. Covers interactive shortcuts (file pickers, dialogs), permission handling, and per-shortcut purpose tracking.",
+  "author": {
+    "name": "Law Horne",
+    "email": "hello@foxtrottwist.com",
+    "url": "https://www.lawrencehorne.com/"
+  },
+  "homepage": "https://www.lawrencehorne.com/mcp",
+  "repository": "https://github.com/foxtrottwist/shortcuts-mcp",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "shortcuts",
+    "macos",
+    "automation",
+    "applescript",
+    "apple"
+  ]
+}
