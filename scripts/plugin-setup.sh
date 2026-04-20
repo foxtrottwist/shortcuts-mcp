@@ -32,6 +32,19 @@ if ! diff -q "${pkg_src}" "${pkg_cached}" >/dev/null 2>&1; then
   ) || { rm -f "${pkg_cached}"; exit 1; }
 fi
 
+# Symlink node_modules so runtimes find deps via the normal walk
+# (belt-and-suspenders with NODE_PATH set in launch.sh).
+(
+  cd "${CLAUDE_PLUGIN_ROOT}"
+  [ -e node_modules ] || ln -s "${CLAUDE_PLUGIN_DATA}/node_modules" node_modules
+)
+
+# Bun runs src/server.ts directly — no tsc step needed.
+if command -v bun >/dev/null 2>&1; then
+  echo "shortcuts-mcp: ready (bun runtime)"
+  exit 0
+fi
+
 dist_entry="${CLAUDE_PLUGIN_ROOT}/dist/server.js"
 src_newest="$(find "${CLAUDE_PLUGIN_ROOT}/src" -name '*.ts' -not -name '*.test.ts' -exec stat -f '%m' {} \; | sort -n | tail -1)"
 dist_mtime="$(stat -f '%m' "${dist_entry}" 2>/dev/null || echo 0)"
@@ -45,9 +58,8 @@ if [ ! -f "${dist_entry}" ] || [ "${src_newest}" -gt "${dist_mtime}" ]; then
   fi
   (
     cd "${CLAUDE_PLUGIN_ROOT}"
-    [ -e node_modules ] || ln -s "${CLAUDE_PLUGIN_DATA}/node_modules" node_modules
     "${tsc_bin}"
   )
 fi
 
-echo "shortcuts-mcp: ready"
+echo "shortcuts-mcp: ready (node runtime)"
