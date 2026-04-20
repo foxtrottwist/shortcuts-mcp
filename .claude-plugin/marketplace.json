@@ -9,7 +9,7 @@
     {
       "name": "shortcuts-mcp",
       "description": "Run, view, and annotate macOS Shortcuts from Claude. Hybrid AppleScript + CLI execution handles interactive shortcuts (file pickers, dialogs, permissions) that a pure CLI can't. Tracks purpose annotations per shortcut for intent matching across sessions.",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "source": "./",
       "repository": "https://github.com/foxtrottwist/shortcuts-mcp",
       "homepage": "https://www.lawrencehorne.com/mcp",
