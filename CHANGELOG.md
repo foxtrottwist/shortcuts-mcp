@@ -1,3 +1,10 @@
+## [3.2.0](https://github.com/foxtrottwist/shortcuts-mcp/compare/v3.1.0...v3.2.0) (2026-04-20)
+
+### Features
+
+- **plugin:** add Claude Code plugin and marketplace ([957ee1f](https://github.com/foxtrottwist/shortcuts-mcp/commit/957ee1fd0c12108b5b843fe32dd5343f218b0e84))
+- **skill:** add shortcuts-cli skill and bump to 3.2.0 ([53de152](https://github.com/foxtrottwist/shortcuts-mcp/commit/53de15249ea85637f24198755844d62996abb3ef))
+
 ## [3.1.0](https://github.com/foxtrottwist/shortcuts-mcp/compare/v3.0.2...v3.1.0) (2026-02-09)
 
 ### Features
