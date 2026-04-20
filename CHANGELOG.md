@@ -1,3 +1,9 @@
+## [3.3.0](https://github.com/foxtrottwist/shortcuts-mcp/compare/v3.2.0...v3.3.0) (2026-04-20)
+
+### Features
+
+- **plugin:** support bun runtime ([6581b48](https://github.com/foxtrottwist/shortcuts-mcp/commit/6581b4859bc1e7b6e0c5c83b886b7fa50caca8e9))
+
 ## [3.2.0](https://github.com/foxtrottwist/shortcuts-mcp/compare/v3.1.0...v3.2.0) (2026-04-20)
 
 ### Features
