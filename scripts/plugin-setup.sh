@@ -18,14 +18,14 @@ if ! diff -q "${pkg_src}" "${pkg_cached}" >/dev/null 2>&1; then
 
   (
     cd "${CLAUDE_PLUGIN_DATA}"
-    if command -v bun >/dev/null 2>&1; then
-      bun install --silent
-    elif command -v pnpm >/dev/null 2>&1; then
+    if command -v pnpm >/dev/null 2>&1; then
       pnpm install --frozen-lockfile --silent
+    elif command -v bun >/dev/null 2>&1; then
+      bun install --silent
     elif command -v npm >/dev/null 2>&1; then
       npm install --silent
     else
-      echo "shortcuts-mcp: no package manager found (bun, pnpm, or npm required)" >&2
+      echo "shortcuts-mcp: no package manager found (pnpm, bun, or npm required)" >&2
       rm -f package.json
       exit 1
     fi
