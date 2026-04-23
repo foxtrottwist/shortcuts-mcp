@@ -33,3 +33,4 @@ temp/
 # Skill artifacts
 *.local
 *.local.*
+bun.lock
