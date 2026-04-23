@@ -1,16 +1,20 @@
+extends:
+  - node_modules/harden-configs/lefthook/harden.yml
+
 pre-commit:
   parallel: true
+  commands:
+    # Override harden template commands to use pnpm/vitest instead of bun
+    lint:
+      run: pnpm exec eslint {staged_files}
+      glob: "*.{js,mjs,cjs,ts,tsx}"
+    typecheck:
+      run: pnpm exec tsc --noEmit
+    test:
+      run: pnpm test
+    secretlint:
+      run: pnpm exec secretlint "**/*"
   jobs:
     - name: prettier
       glob: "*.{ts,js,json,md,yaml,yml}"
       run: pnpm exec prettier --check {staged_files}
-
-    - name: eslint
-      glob: "*.{ts,js}"
-      run: pnpm exec eslint {staged_files}
-
-    - name: typecheck
-      run: pnpm exec tsc --noEmit
-
-    - name: test
-      run: pnpm test

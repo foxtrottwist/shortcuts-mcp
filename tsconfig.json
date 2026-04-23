@@ -1,8 +1,23 @@
 {
-  "extends": "@tsconfig/node22/tsconfig.json",
+  // Extends harden-configs/tsconfig for the shared hardening flags
+  // (strict, noUncheckedIndexedAccess, exactOptionalPropertyTypes,
+  //  noImplicitOverride, noFallthroughCasesInSwitch,
+  //  noPropertyAccessFromIndexSignature, forceConsistentCasingInFileNames).
+  //
+  // harden-configs is installed as a local file dep:
+  //   pnpm add -D /path/to/harden-configs
+  // The file: link is in package.json devDependencies.
+  //
+  // noPropertyAccessFromIndexSignature is overridden to false here because
+  // process.env.X access is pervasive and this flag is style-level, not
+  // security-critical. The substantive flags (strict, noUncheckedIndexedAccess,
+  // exactOptionalPropertyTypes, noImplicitOverride) are all inherited.
+  // TODO: remove this override once process.env accesses use bracket notation.
+  "extends": ["@tsconfig/node22/tsconfig.json", "harden-configs/tsconfig"],
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "src",
+    "noPropertyAccessFromIndexSignature": false
   },
   "include": ["src", "src/**/*.test.ts"],
   "exclude": ["dist", "node_modules"]

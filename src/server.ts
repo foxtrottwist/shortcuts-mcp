@@ -10,6 +10,7 @@ import {
   loadUserProfile,
   recordPurpose,
   saveUserProfile,
+  UserProfile,
 } from "./shortcuts-usage.js";
 import { runShortcut, viewShortcut } from "./shortcuts.js";
 
@@ -122,7 +123,7 @@ server.addTool({
         return result;
       }
       case "update": {
-        const profile = await saveUserProfile(data);
+        const profile = await saveUserProfile((data as UserProfile) ?? {});
 
         log.info("User profile updated", {
           updatedFields: Object.keys(data),
@@ -232,6 +233,7 @@ server.addResource({
     "AI-generated execution statistics including success rates, timing analysis, and per-shortcut performance data.",
   async load() {
     const session = server.sessions[0];
+    if (!session) throw new Error("No active session");
     return {
       text: JSON.stringify(await requestStatistics(session)),
     };

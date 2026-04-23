@@ -121,7 +121,7 @@ describe("helpers", () => {
       error.stdout = "output";
       error.code = 1;
       error.killed = false;
-      error.signal = undefined;
+      delete error.signal;
       error.cmd = "test command";
 
       expect(isExecError(error)).toBe(true);

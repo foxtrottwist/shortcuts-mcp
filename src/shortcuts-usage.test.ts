@@ -115,8 +115,8 @@ describe("shortcuts-usage", () => {
 
       const result = await enrichShortcutsWithAnnotations(shortcuts);
 
-      expect(result.Morning.purposes).toEqual(["check weather"]);
-      expect(result.Timer.purposes).toBeUndefined();
+      expect(result.Morning!.purposes).toEqual(["check weather"]);
+      expect(result.Timer!.purposes).toBeUndefined();
     });
 
     it("should skip shortcuts without annotations", async () => {
@@ -126,7 +126,7 @@ describe("shortcuts-usage", () => {
 
       const result = await enrichShortcutsWithAnnotations(shortcuts);
 
-      expect(result.Timer.purposes).toBeUndefined();
+      expect(result.Timer!.purposes).toBeUndefined();
     });
 
     it("should handle empty profile", async () => {

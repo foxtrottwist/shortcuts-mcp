@@ -232,7 +232,10 @@ export function parseShortcutsList(cliOutput: string): ShortcutsMap {
   for (const line of cliOutput.split("\n")) {
     const match = line.match(/^(.+?)\s+\(([^)]+)\)\s*$/);
     if (match) {
-      map[match[1]] = { id: match[2] };
+      const [, name, id] = match;
+      if (name != null && id != null) {
+        map[name] = { id };
+      }
     }
   }
   return map;
