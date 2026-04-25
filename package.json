@@ -118,7 +118,6 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-perfectionist": "^5.9.0",
     "eslint-plugin-security": "^4.0.0",
-    "harden-configs": "link:/Users/foxtrottwist/Repos/harden-configs",
     "jiti": "^2.6.1",
     "lefthook": "^2.1.6",
     "prettier": "^3.8.3",

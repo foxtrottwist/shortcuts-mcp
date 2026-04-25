@@ -13,7 +13,7 @@
   // security-critical. The substantive flags (strict, noUncheckedIndexedAccess,
   // exactOptionalPropertyTypes, noImplicitOverride) are all inherited.
   // TODO: remove this override once process.env accesses use bracket notation.
-  "extends": ["@tsconfig/node22/tsconfig.json", "harden-configs/tsconfig"],
+  "extends": ["@tsconfig/node22/tsconfig.json", "./tsconfig.hardening.json"],
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",

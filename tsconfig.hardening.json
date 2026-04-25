@@ -1,0 +1,40 @@
+{
+  // Base hardening tsconfig — extend this from your project's tsconfig.json:
+  //   { "extends": "harden-configs/tsconfig" }
+  //
+  // All flags below tighten type-safety. None affect emit; pair with your own
+  // "compilerOptions.outDir", "include", and "module" settings.
+  "compilerOptions": {
+    // --- Core strict bundle ---
+    // Enables: strictNullChecks, strictFunctionTypes, strictBindCallApply,
+    //          strictPropertyInitialization, noImplicitAny, noImplicitThis,
+    //          alwaysStrict (emits "use strict").
+    "strict": true,
+
+    // Array/index access returns T | undefined instead of T.
+    // Catches the overwhelming majority of "undefined is not an object" crashes
+    // that strict alone misses.
+    "noUncheckedIndexedAccess": true,
+
+    // Optional properties must be assigned `undefined` explicitly; you cannot
+    // just omit them when the type says `{ foo?: string }`. Prevents accidental
+    // property deletion via spread patterns.
+    "exactOptionalPropertyTypes": true,
+
+    // Any method that overrides a base-class method must carry the `override`
+    // keyword. Catches silent shadowing when base signatures change.
+    "noImplicitOverride": true,
+
+    // Switch case fall-through (missing break/return) is a type error.
+    // Intentional fall-through still works with an explicit // falls through comment.
+    "noFallthroughCasesInSwitch": true,
+
+    // Indexed access (obj["key"]) is disallowed when the key exists as a named
+    // property; use dot notation instead. Keeps APIs explicit and refactor-safe.
+    "noPropertyAccessFromIndexSignature": true,
+
+    // File-system case differences (MyFile vs myfile) cause silent bugs on
+    // case-insensitive macOS/Windows that explode on Linux CI.
+    "forceConsistentCasingInFileNames": true
+  }
+}
