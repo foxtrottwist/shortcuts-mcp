@@ -1,7 +1,5 @@
 {
-  // Base hardening tsconfig — extend this from your project's tsconfig.json:
-  //   { "extends": "harden-configs/tsconfig" }
-  //
+  // Vendored hardening tsconfig — extend via "./tsconfig.hardening.json".
   // All flags below tighten type-safety. None affect emit; pair with your own
   // "compilerOptions.outDir", "include", and "module" settings.
   "compilerOptions": {
