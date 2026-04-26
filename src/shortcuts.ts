@@ -1,4 +1,5 @@
 import { exec } from "child_process";
+import { statSync } from "fs";
 import { promisify } from "util";
 
 import {
@@ -29,7 +30,9 @@ export async function listShortcuts() {
 export async function runShortcut(shortcut: string, input?: string) {
   const escapedName = escapeAppleScriptString(shortcut);
   const script = input
-    ? `tell application "Shortcuts Events" to run the shortcut named "${escapedName}" with input "${escapeAppleScriptString(input)}"`
+    ? isExistingAbsolutePath(input)
+      ? `tell application "Shortcuts Events" to run the shortcut named "${escapedName}" with input (POSIX file "${escapeAppleScriptString(input)}")`
+      : `tell application "Shortcuts Events" to run the shortcut named "${escapedName}" with input "${escapeAppleScriptString(input)}"`
     : `tell application "Shortcuts Events" to run the shortcut named "${escapedName}"`;
   const command = `osascript -e ${shellEscape(script)}`;
 
@@ -116,5 +119,15 @@ export async function viewShortcut(name: string) {
       "CLI view command failed - possible Apple name resolution bug",
     );
     throw error;
+  }
+}
+
+function isExistingAbsolutePath(value: string): boolean {
+  if (!value.startsWith("/")) return false;
+  try {
+    statSync(value);
+    return true;
+  } catch {
+    return false;
   }
 }

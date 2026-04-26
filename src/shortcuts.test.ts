@@ -3,6 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listShortcuts, runShortcut, viewShortcut } from "./shortcuts.js";
 
+vi.mock("fs", () => ({
+  statSync: vi.fn((path: string) => {
+    if (path === "/existing/file.png") return {};
+    throw new Error("ENOENT");
+  }),
+}));
+
 vi.mock("util", () => {
   const mockExecAsync = vi.fn();
   return {
@@ -209,6 +216,55 @@ describe("shortcuts", () => {
       mockExecAsync.mockRejectedValue(mockError);
 
       await expect(runShortcut("Test")).rejects.toThrow("Error: Generic error");
+    });
+
+    it("should use POSIX file coercion for existing absolute path input", async () => {
+      mockExecAsync.mockResolvedValue({ stderr: "", stdout: "done" });
+
+      await runShortcut("Image Shortcut", "/existing/file.png");
+
+      const [calledCommand] = mockExecAsync.mock.calls[0] as [string];
+      expect(calledCommand).toContain('(POSIX file "/existing/file.png")');
+      expect(calledCommand).not.toContain('with input "/existing/file.png"');
+    });
+
+    it("should use string-quoted form for absolute path that does not exist", async () => {
+      mockExecAsync.mockResolvedValue({ stderr: "", stdout: "done" });
+
+      await runShortcut("My Shortcut", "/nonexistent/file.txt");
+
+      const [calledCommand] = mockExecAsync.mock.calls[0] as [string];
+      expect(calledCommand).toContain('with input "/nonexistent/file.txt"');
+      expect(calledCommand).not.toContain("POSIX file");
+    });
+
+    it("should use string-quoted form for relative path input", async () => {
+      mockExecAsync.mockResolvedValue({ stderr: "", stdout: "done" });
+
+      await runShortcut("My Shortcut", "relative/path.txt");
+
+      const [calledCommand] = mockExecAsync.mock.calls[0] as [string];
+      expect(calledCommand).toContain('with input "relative/path.txt"');
+      expect(calledCommand).not.toContain("POSIX file");
+    });
+
+    it("should use string-quoted form for arbitrary text input", async () => {
+      mockExecAsync.mockResolvedValue({ stderr: "", stdout: "done" });
+
+      await runShortcut("My Shortcut", "hello world");
+
+      const [calledCommand] = mockExecAsync.mock.calls[0] as [string];
+      expect(calledCommand).toContain('with input "hello world"');
+      expect(calledCommand).not.toContain("POSIX file");
+    });
+
+    it("should have no with input clause when input is not provided", async () => {
+      mockExecAsync.mockResolvedValue({ stderr: "", stdout: "done" });
+
+      await runShortcut("My Shortcut");
+
+      const [calledCommand] = mockExecAsync.mock.calls[0] as [string];
+      expect(calledCommand).not.toContain("with input");
     });
   });
 
