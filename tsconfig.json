@@ -1,12 +1,8 @@
 {
-  // Extends harden-configs/tsconfig for the shared hardening flags
-  // (strict, noUncheckedIndexedAccess, exactOptionalPropertyTypes,
-  //  noImplicitOverride, noFallthroughCasesInSwitch,
-  //  noPropertyAccessFromIndexSignature, forceConsistentCasingInFileNames).
-  //
-  // harden-configs is installed as a local file dep:
-  //   pnpm add -D /path/to/harden-configs
-  // The file: link is in package.json devDependencies.
+  // Extends ./tsconfig.hardening.json (vendored copy) for shared hardening flags:
+  // strict, noUncheckedIndexedAccess, exactOptionalPropertyTypes,
+  // noImplicitOverride, noFallthroughCasesInSwitch,
+  // noPropertyAccessFromIndexSignature, forceConsistentCasingInFileNames.
   //
   // noPropertyAccessFromIndexSignature is overridden to false here because
   // process.env.X access is pervasive and this flag is style-level, not
