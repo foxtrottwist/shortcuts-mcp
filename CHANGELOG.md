@@ -1,3 +1,11 @@
+## [3.3.1](https://github.com/foxtrottwist/shortcuts-mcp/compare/v3.3.0...v3.3.1) (2026-04-27)
+
+### Bug Fixes
+
+- **deps:** remove broken harden-configs node_modules reference ([#6](https://github.com/foxtrottwist/shortcuts-mcp/issues/6)) ([cd7273f](https://github.com/foxtrottwist/shortcuts-mcp/commit/cd7273fefffe582de9cad3220afd5ca43583411b))
+- **release:** drop stale marketplace.json refs from prepareCmd ([#7](https://github.com/foxtrottwist/shortcuts-mcp/issues/7)) ([d2770a5](https://github.com/foxtrottwist/shortcuts-mcp/commit/d2770a52776e04ca65e6228ca62466f39ded9e54))
+- **run:** coerce absolute-path input to POSIX file reference ([5af6924](https://github.com/foxtrottwist/shortcuts-mcp/commit/5af6924355d5a1ee4182b811382513ea62771ce2))
+
 ## [3.3.0](https://github.com/foxtrottwist/shortcuts-mcp/compare/v3.2.0...v3.3.0) (2026-04-20)
 
 ### Features
