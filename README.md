@@ -454,7 +454,7 @@ MIT License - see <LICENSE> for details.
 **Law Horne**
 
 - Website: [lawrencehorne.com](https://lawrencehorne.com)
-- Email: [hello@foxtrottwist.com](mailto:hello@foxtrottwist.com)
+- Email: [hello@lawrencehorne.com](mailto:hello@lawrencehorne.com)
 - MCP Projects: [lawrencehorne.com/mcp](https://lawrencehorne.com/mcp)
 
 ---
